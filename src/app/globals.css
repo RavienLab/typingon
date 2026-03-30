@@ -1,0 +1,176 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===============================
+   Base Typography
+================================ */
+
+html {
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+}
+
+h1 {
+  font-size: 3rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+h2 {
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
+h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+p {
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.6;
+}
+
+/* ===============================
+   Global Background
+================================ */
+
+body {
+  background: radial-gradient(ellipse at top, #0b1220 0%, #05070d 60%);
+}
+
+html,
+body {
+  overflow-x: hidden;
+}
+
+/* ===============================
+   Glass / Panel System
+================================ */
+
+:root {
+  --panel-bg: rgba(255, 255, 255, 0.03);
+  --panel-border: rgba(255, 255, 255, 0.08);
+  --muted: rgba(255, 255, 255, 0.45);
+}
+
+.glass {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  backdrop-filter: blur(8px);
+}
+
+
+
+
+/* ===============================
+   Caret (FINAL – single source)
+================================ */
+
+@keyframes caretBlink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  50.01%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.caret-blink {
+  animation: caretBlink 1.1s step-end infinite;
+}
+
+.caret-soft {
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.35);
+}
+
+/* ===============================
+   Error Shake
+================================ */
+
+@keyframes shake {
+  0% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-6px);
+  }
+  50% {
+    transform: translateX(6px);
+  }
+  75% {
+    transform: translateX(-4px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.animate-shake {
+  animation: shake 0.15s ease-in-out;
+}
+
+/* ===============================
+   Virtual Keyboard
+================================ */
+
+.keyboard-key {
+  transition:
+    transform 0.08s ease,
+    box-shadow 0.08s ease;
+}
+
+.keyboard-key.active {
+  transform: scale(1.05);
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.6);
+}
+
+@keyframes typingPulse {
+  0% { opacity: 0.6 }
+  50% { opacity: 1 }
+  100% { opacity: 0.6 }
+}
+
+@keyframes streakIgnite {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.3;
+    filter: drop-shadow(0 0 0px orange);
+  }
+  40% {
+    transform: scale(1.5);
+    opacity: 1;
+    filter: drop-shadow(0 0 14px orange);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+    filter: drop-shadow(0 0 4px orange);
+  }
+}
+
+.active-char {
+  position: relative;
+}
+
+.active-char::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  height: 2px;
+  width: 100%;
+  background: #60a5fa;
+  border-radius: 2px;
+  animation: caretBlink 1s infinite;
+}

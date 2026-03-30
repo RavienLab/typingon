@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://typingon.com/sitemap.xml

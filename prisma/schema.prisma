@@ -1,0 +1,397 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "binary"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/**
+ * ===================== ENUMS =====================
+ */
+
+enum ExamMode {
+  english
+  numbers
+  code
+  hindi_inscript
+  marathi_inscript
+}
+
+enum Language {
+  english
+  numbers
+  code
+  hindi
+  marathi
+}
+
+enum Difficulty {
+  easy
+  medium
+  hard
+}
+
+enum AttemptStatus {
+  created
+  started
+  paused
+  resumed
+  finished
+  aborted
+  invalidated
+  verified
+}
+
+enum AttemptEventType {
+  created
+  started
+  focus_lost
+  focus_gained
+  paused
+  resumed
+  finished
+  aborted
+}
+
+enum AuditAction {
+  created
+  viewed
+  verified
+  certified
+  exported
+  invalidated
+}
+
+enum ActorRole {
+  system
+  admin
+  examiner
+}
+
+enum UserRole {
+  user
+  examiner
+  admin
+}
+
+
+/**
+ * ===================== MODELS =====================
+ */
+
+model User {
+  id               String            @id @default(cuid())
+  email            String?           @unique
+  name             String?
+  password         String?
+  image            String?
+  role             UserRole          @default(user)
+  createdAt        DateTime          @default(now())
+  isPro            Boolean           @default(false)
+  passwordUpdatedAt DateTime?
+  xp               Int               @default(0)
+  level            Int               @default(1)
+  bestStreak       Int               @default(0)
+  currentStreak    Int               @default(0)
+  lastActive       DateTime?
+  personalBest     Int               @default(0)
+
+  accounts         Account[]
+  challenges       DailyChallenge[]
+  sessions         Session[]
+  typingProfile    TypingProfile?
+  results          TypingResult[]
+  tests            TypingSession[]
+  leaderboardEntry LeaderboardEntry?
+  achievements     UserAchievement[]
+
+  attempts         Attempt[]
+}
+
+model TypingSession {
+  id        String         @id @default(cuid())
+  userId    String?
+  mode      String
+  duration  Int
+  textType  String
+  startedAt DateTime       @default(now())
+  endedAt   DateTime?
+  results   TypingResult[]
+  user      User?          @relation(fields: [userId], references: [id])
+}
+
+model TypingResult {
+  id          String         @id @default(cuid())
+  sessionId   String?
+  userId      String?
+
+  wpm         Int
+  rawWpm      Int
+  accuracy    Float
+  errors      Int
+  backspaces  Int
+
+  durationMs  Int?           // ✅ NEW
+  practiceMode String?       // ✅ NEW
+  paragraph   String?        // ✅ NEW
+
+  keystrokes  Json?          @db.JsonB
+  wpmTimeline Json           @default("[]")
+
+  createdAt   DateTime       @default(now())
+
+  session     TypingSession? @relation(fields: [sessionId], references: [id])
+  user        User?          @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([wpm])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id])
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model TypingProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  avgWpm    Float
+  avgAcc    Float
+  weakKeys  Json
+  sessions  Int
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model DailyChallenge {
+  id        String   @id @default(cuid())
+  userId    String
+  date      DateTime
+  seed      String
+  completed Boolean  @default(false)
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, date])
+}
+
+model LeaderboardEntry {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  username  String
+
+  bestWpm   Int
+  avgWpm    Int
+  accuracy  Float   @default(0)
+
+  tests     Int
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([bestWpm])
+  @@index([avgWpm])
+}
+
+model Achievement {
+  id          String @id @default(cuid())
+  key         String @unique
+  title       String
+  description String
+  icon        String
+  version     Int    @default(1)
+
+  users UserAchievement[]
+}
+
+model UserAchievement {
+  id            String   @id @default(cuid())
+  userId        String
+  achievementId String
+  unlockedAt    DateTime @default(now())
+
+  user        User        @relation(fields: [userId], references: [id])
+  achievement Achievement @relation(fields: [achievementId], references: [id])
+
+  @@unique([userId, achievementId])
+}
+
+model Exam {
+  id                String   @id @default(uuid())
+  title             String
+  mode              ExamMode
+  durationSeconds   Int
+  allowBackspace    Boolean
+  paragraphPoolHash String
+  published         Boolean  @default(false)
+
+  createdById String
+  createdAt   DateTime @default(now())
+
+  attempts       Attempt[]
+  examParagraphs ExamParagraph[]
+}
+
+model Paragraph {
+  id          String     @id @default(uuid())
+  language    Language
+  content     String
+  contentHash String     @unique
+  difficulty  Difficulty
+  createdAt   DateTime   @default(now())
+
+  attempts       Attempt[]
+  examParagraphs ExamParagraph[]
+}
+
+model ExamParagraph {
+  examId      String
+  paragraphId String
+  orderIndex  Int?
+
+  exam      Exam      @relation(fields: [examId], references: [id])
+  paragraph Paragraph @relation(fields: [paragraphId], references: [id])
+
+  @@id([examId, paragraphId])
+}
+
+model Attempt {
+  id          String @id @default(uuid())
+  examId      String
+  userId      String
+  paragraphId String
+
+  status AttemptStatus
+
+  startedAt  DateTime?
+  endedAt    DateTime?
+  durationMs Int?
+
+  mode          ExamMode
+  paragraphHash String
+
+  clientFingerprint String
+  userAgent         String
+  ipAddress         String
+
+  createdAt DateTime @default(now())
+
+  events        AttemptEvent[]
+  keystrokes    KeystrokeChunk[]
+  result        AttemptResult?
+  exam          Exam      @relation(fields: [examId], references: [id])
+  paragraph     Paragraph @relation(fields: [paragraphId], references: [id])
+  user          User      @relation(fields: [userId], references: [id])
+  attemptAudits AttemptAudit[]
+
+  
+  certificate   Certificate?
+}
+
+
+model AttemptEvent {
+  id        String @id @default(uuid())
+  attemptId String
+
+  type      AttemptEventType
+  timestamp DateTime         @default(now())
+  meta      Json?
+
+  attempt Attempt @relation(fields: [attemptId], references: [id])
+}
+
+model KeystrokeChunk {
+  id        String @id @default(uuid())
+  attemptId String
+
+  sequenceStart Int
+  sequenceEnd   Int
+  data          Json
+
+  createdAt DateTime @default(now())
+
+  attempt Attempt @relation(fields: [attemptId], references: [id])
+
+  @@index([attemptId])
+}
+
+model AttemptResult {
+  attemptId String @id
+
+  wpm        Float
+  rawWpm     Float
+  accuracy   Float
+  errors     Int
+  totalChars Int
+
+  checksum     String
+  calculatedAt DateTime @default(now())
+
+  attempt Attempt @relation(fields: [attemptId], references: [id])
+}
+
+model AttemptAudit {
+  id        String @id @default(uuid())
+  attemptId String
+
+  action    AuditAction
+  actorId   String?
+  actorRole ActorRole
+
+  timestamp DateTime @default(now())
+
+  attempt Attempt @relation(fields: [attemptId], references: [id])
+}
+
+model Certificate {
+  id            String   @id @default(uuid())
+  attemptId     String   @unique
+  certificateId String   @unique
+
+  issuedAt      DateTime @default(now())
+  verificationHash String
+
+  attempt       Attempt  @relation(fields: [attemptId], references: [id])
+}
+
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
