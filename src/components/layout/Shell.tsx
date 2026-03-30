@@ -72,11 +72,20 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 </div>
 
                 {/* 👤 AVATAR */}
-                <img
-                  src={session.user?.image || "/default-avatar.png"}
-                  className="w-8 h-8 rounded-full object-cover border border-white/10"
-                  alt="avatar"
-                />
+                {session.user?.image ? (
+                  <img
+                    src={session.user.image}
+                    onError={(e) => {
+                      e.currentTarget.src = "/avatar.png";
+                    }}
+                    className="w-8 h-8 rounded-full object-cover border border-white/10"
+                    alt="avatar"
+                  />
+                ) : ( 
+                  <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white text-sm font-bold">
+                    {session.user?.name?.charAt(0).toUpperCase() || "U"}
+                  </div>
+                )}
 
                 {/* 🧑 NAME */}
                 <span className="max-w-[90px] truncate font-medium">

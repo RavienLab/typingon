@@ -212,7 +212,7 @@ export default function ProfilePage() {
   `}
       >
         {/* Avatar */}
-        <AvatarUploader image={me?.image} />
+        <AvatarUploader image={me?.image} name={me?.name} />
         {/* Info */}
         <div>
           <div className="flex items-center gap-3">
@@ -247,7 +247,6 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
-
         {/* Upgrade */}
         <div className="ml-auto">
           <button

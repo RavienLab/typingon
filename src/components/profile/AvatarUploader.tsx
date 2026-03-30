@@ -4,7 +4,13 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
 
-export default function AvatarUploader({ image }: { image?: string }) {
+export default function AvatarUploader({
+  image,
+  name,
+}: {
+  image?: string;
+  name?: string;
+}) {
   const { update } = useSession(); // 🔥 REAL FIX
   const [avatar, setAvatar] = useState<string | null>(image ?? null);
   const [loading, setLoading] = useState(false);
@@ -61,18 +67,22 @@ export default function AvatarUploader({ image }: { image?: string }) {
         accept="image/png,image/jpeg,image/webp"
         onChange={handleUpload}
       />
-
       <div className="w-20 h-20 rounded-full bg-blue-600 flex items-center justify-center overflow-hidden text-3xl font-black">
-        {avatar ? (
+        {avatar && avatar !== "" ? (
           <img
-            src={avatar || "/default-avatar.png"}
+            src={avatar}
+            onError={(e) => {
+              e.currentTarget.src = "/avatar.png";
+            }}
             className={`w-full h-full object-cover transition-opacity duration-300 ${
               loading ? "opacity-50" : "opacity-100"
             }`}
             alt="avatar"
           />
         ) : (
-          "U"
+          <span className="text-white">
+            {name?.charAt(0).toUpperCase() || "U"}
+          </span>
         )}
       </div>
 
