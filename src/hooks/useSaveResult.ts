@@ -7,10 +7,10 @@ export function useSaveResult() {
     mutationFn: async (data: any) => {
       const payload = {
         ...data,
-        attemptId: crypto.randomUUID(), // 🔥 ADD THIS
+        attemptId: crypto.randomUUID(),
       };
 
-      const res = await fetch("/api/results", {
+      const res = await fetch("/api/v1/typing/submit", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -26,13 +26,23 @@ export function useSaveResult() {
       return res.json();
     },
 
-    // 🔥 keeps UI fresh everywhere
-    onSuccess: () => {
+    // 🔥 THIS IS THE MAGIC
+    onSuccess: (data) => {
+      // ⚡ instant UI update
+      queryClient.setQueryData(["user"], (old: any) => {
+        if (!old) return old;
+
+        return {
+          ...old,
+          currentStreak: data?.streak ?? old.currentStreak,
+        };
+      });
+
+      // 🔄 force refetch (sync with backend)
+      queryClient.invalidateQueries({ queryKey: ["user"] });
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["stats"] });
-      queryClient.invalidateQueries({ queryKey: ["xp"] });
-      queryClient.invalidateQueries({ queryKey: ["achievements"] });
-      queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
-      queryClient.invalidateQueries({ queryKey: ["activity"] });
+      queryClient.invalidateQueries({ queryKey: ["streak"] });
     },
   });
 }

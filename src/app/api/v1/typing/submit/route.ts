@@ -10,19 +10,15 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
-  const userId = session?.user?.id ?? null;
+  const userId = session?.user?.id;
 
-  // 🔒 BLOCK GUESTS COMPLETELY
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { sessionId, keystrokes, startTime, backspaces, wpmTimeline } =
+  const { sessionId, keystrokes, wpmTimeline, backspaces } =
     await req.json();
 
-  // ─────────────────────────────────────────────
-  // 🧪 Basic payload validation
-  // ─────────────────────────────────────────────
   if (
     typeof sessionId !== "string" ||
     !Array.isArray(keystrokes) ||
@@ -31,60 +27,54 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid data" }, { status: 400 });
   }
 
-  // ─────────────────────────────────────────────
-  // 🔥 Rate limit (only for logged users)
-  // ─────────────────────────────────────────────
-  if (userId) {
-    const recent = await prisma.typingResult.count({
-      where: {
-        userId,
-        createdAt: {
-          gt: new Date(Date.now() - 60_000),
-        },
-      },
-    });
-
-    if (recent >= 3) {
-      return NextResponse.json(
-        { error: "Too many submissions" },
-        { status: 429 },
-      );
-    }
-  }
-
-  // ─────────────────────────────────────────────
-  // 🔒 Load & validate session
-  // ─────────────────────────────────────────────
-  const typingSession = await prisma.typingSession.update({
+  // 🔥 Rate limit
+  const recent = await prisma.typingResult.count({
     where: {
-      id: sessionId,
-      endedAt: null,
-    },
-    data: {
-      endedAt: new Date(),
+      userId,
+      createdAt: {
+        gt: new Date(Date.now() - 60_000),
+      },
     },
   });
+
+  if (recent >= 3) {
+    return NextResponse.json(
+      { error: "Too many submissions" },
+      { status: 429 },
+    );
+  }
+
+  // 🔒 Get session FIRST (not updateMany)
+  const typingSession = await prisma.typingSession.findUnique({
+    where: { id: sessionId },
+  });
+
   if (!typingSession) {
     return NextResponse.json({ error: "Invalid session" }, { status: 403 });
   }
 
-  // If logged in, session must belong to user
-  if (userId && typingSession.userId !== userId) {
+  if (typingSession.userId !== userId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // Enforce real elapsed time
+  if (typingSession.endedAt) {
+    return NextResponse.json(
+      { error: "Already submitted" },
+      { status: 409 },
+    );
+  }
+
+  // 🔒 Enforce server time (NOT client)
   const elapsed = Date.now() - typingSession.startedAt.getTime();
+
   if (elapsed < 5000) {
     return NextResponse.json(
-      { error: "Session too short to be human" },
+      { error: "Session too short" },
       { status: 400 },
     );
   }
 
-  // ─────────────────────────────────────────────
-  // 🔐 Keystroke integrity
-  // ─────────────────────────────────────────────
+  // 🔐 Validate keystrokes
   for (const k of keystrokes) {
     if (
       typeof k.key !== "string" ||
@@ -98,30 +88,35 @@ export async function POST(req: Request) {
     }
   }
 
-  // ─────────────────────────────────────────────
-  // 🧠 Human timing check
-  // ─────────────────────────────────────────────
+  // 🧠 Bot detection
   const times = keystrokes.map((k: any) => k.time);
   const intervals = times.slice(1).map((t: number, i: number) => t - times[i]);
 
-  if (intervals.length > 0) {
-    const avg = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+  if (intervals.length >= 5) {
+    const avg =
+      intervals.reduce((a, b) => a + b, 0) / intervals.length;
+
     const variance =
       intervals.reduce((acc, val) => acc + Math.abs(val - avg), 0) /
       intervals.length;
 
     if (avg < 30 || variance < 5) {
-      return NextResponse.json({ error: "Bot detected" }, { status: 400 });
-    }
-    {
-      return NextResponse.json({ error: "Bot detected" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Bot detected" },
+        { status: 400 },
+      );
     }
   }
 
-  // ─────────────────────────────────────────────
-  // 📊 Compute stats
-  // ─────────────────────────────────────────────
-  const stats = calculateStats(keystrokes, startTime);
+  // 📊 Use SERVER time
+  const stats = calculateStats(
+    keystrokes,
+    typingSession.startedAt.getTime(),
+  );
+
+  if (stats.rawWpm < stats.wpm) {
+    return NextResponse.json({ error: "Invalid stats" }, { status: 400 });
+  }
 
   if (stats.wpm > 220 || stats.accuracy > 100) {
     return NextResponse.json({ error: "Invalid result" }, { status: 400 });
@@ -131,12 +126,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Too short" }, { status: 400 });
   }
 
-  // ─────────────────────────────────────────────
-  // 💾 Save result (guest-safe)
-  // ─────────────────────────────────────────────
   let result: any;
+  let streak = 0;
 
   await prisma.$transaction(async (tx) => {
+    // 🔒 LOCK SESSION
+    await tx.typingSession.update({
+      where: { id: sessionId },
+      data: { endedAt: new Date() },
+    });
+
     result = await tx.typingResult.create({
       data: {
         sessionId,
@@ -151,68 +150,70 @@ export async function POST(req: Request) {
       },
     });
 
-    await tx.dailyChallenge.updateMany({
-      where: {
-        userId,
-        completed: false,
-      },
-      data: {
-        completed: true,
-      },
-    });
-
     const user = await tx.user.findUnique({
       where: { id: userId },
     });
 
-    const previous = await tx.leaderboardEntry.findUnique({
+    if (!user) throw new Error("User not found");
+
+    // 🏆 Leaderboard
+    const prev = await tx.leaderboardEntry.findUnique({
       where: { userId },
     });
 
-    if (!previous) {
+    if (!prev) {
       await tx.leaderboardEntry.create({
         data: {
           userId,
-          username: user?.name || "Anonymous",
+          username: user.name || "Anonymous",
           bestWpm: stats.wpm,
           avgWpm: stats.wpm,
           tests: 1,
         },
       });
     } else {
-      const totalTests = previous.tests + 1;
+      const total = prev.tests + 1;
       const newAvg =
-        (previous.avgWpm * previous.tests + stats.wpm) / totalTests;
+        (prev.avgWpm * prev.tests + stats.wpm) / total;
 
       await tx.leaderboardEntry.update({
         where: { userId },
         data: {
-          bestWpm: Math.max(previous.bestWpm, stats.wpm),
+          bestWpm: Math.max(prev.bestWpm, stats.wpm),
           avgWpm: Math.round(newAvg),
-          tests: totalTests,
+          tests: total,
         },
       });
     }
 
+    // 🔥 Streak logic (fixed)
     const today = new Date();
-    const last = user?.lastActive ? new Date(user.lastActive) : null;
+    today.setHours(0, 0, 0, 0);
 
-    const isSameDay = last && last.toDateString() === today.toDateString();
-    const isNextDay =
-      last &&
-      new Date(last.getTime() + 86400000).toDateString() ===
-        today.toDateString();
+    const last = user.lastActive ? new Date(user.lastActive) : null;
 
-    let streak = user?.currentStreak || 0;
+    streak = user.currentStreak || 0;
 
-    if (!last || isNextDay) streak += 1;
-    if (!isSameDay && !isNextDay) streak = 1;
+    if (!last) {
+      streak = 1;
+    } else {
+      const lastDay = new Date(last);
+      lastDay.setHours(0, 0, 0, 0);
 
-    const best = Math.max(user?.bestStreak || 0, streak);
-    const pb = Math.max(user?.personalBest || 0, stats.wpm);
+      const diffDays = Math.floor(
+        (today.getTime() - lastDay.getTime()) /
+          (1000 * 60 * 60 * 24),
+      );
+
+      if (diffDays === 1) streak += 1;
+      else if (diffDays > 1) streak = 1;
+    }
+
+    const best = Math.max(user.bestStreak || 0, streak);
+    const pb = Math.max(user.personalBest || 0, stats.wpm);
 
     const gainedXP = calculateXP(stats.wpm, stats.accuracy);
-    const newXP = (user?.xp || 0) + gainedXP;
+    const newXP = (user.xp || 0) + gainedXP;
     const newLevel = levelFromXP(newXP);
 
     await tx.user.update({
@@ -228,49 +229,13 @@ export async function POST(req: Request) {
     });
   });
 
-  // ─────────────────────────────────────────────
-  // 🧠 Profile learning (logged users only)
-  // ─────────────────────────────────────────────
-  if (userId) {
-    const mistakes = keystrokes
-      .filter((k: any) => !k.correct)
-      .map((k: any) => k.key);
-
-    const existing = await prisma.typingProfile.findUnique({
-      where: { userId },
-    });
-
-    if (!existing) {
-      await prisma.typingProfile.create({
-        data: {
-          userId,
-          avgWpm: stats.wpm,
-          avgAcc: stats.accuracy,
-          weakKeys: mistakes,
-          sessions: 1,
-        },
-      });
-    } else {
-      const total = existing.sessions + 1;
-
-      await prisma.typingProfile.update({
-        where: { userId },
-        data: {
-          avgWpm: (existing.avgWpm * existing.sessions + stats.wpm) / total,
-          avgAcc:
-            (existing.avgAcc * existing.sessions + stats.accuracy) / total,
-          weakKeys: [
-            ...new Set([...(existing.weakKeys as string[]), ...mistakes]),
-          ],
-          sessions: total,
-        },
-      });
-    }
-  }
+  // 🧠 Async (non-critical)
+  grantAchievement(userId, "first_test").catch(() => {});
 
   return NextResponse.json({
     guest: false,
     sessionId,
     result,
+    streak,
   });
 }
