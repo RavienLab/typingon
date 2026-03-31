@@ -5,17 +5,37 @@ import { useState, useEffect } from "react";
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [done, setDone] = useState(false);
+
   useEffect(() => {
-  const saved = localStorage.getItem("reset_email");
-  if (saved) setEmail(saved);
-}, []);
+    const saved = localStorage.getItem("reset_email");
+    if (saved) setEmail(saved);
+  }, []);
+
+  // ✅ Email validation (used for button + logic)
+  const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
   async function handleReset() {
+    const trimmedEmail = email.trim();
+
+    // Validation
+    if (!trimmedEmail) {
+      alert("Email is required");
+      return;
+    }
+
+    if (!isValidEmail) {
+      alert("Enter a valid email");
+      return;
+    }
+
     await fetch("/api/auth/forgot-password", {
       method: "POST",
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email: trimmedEmail }),
       headers: { "Content-Type": "application/json" },
     });
+
+    // Save clean email
+    localStorage.setItem("reset_email", trimmedEmail);
 
     setDone(true);
   }
@@ -38,7 +58,8 @@ export default function ForgotPassword() {
 
             <button
               onClick={handleReset}
-              className="w-full bg-blue-600 p-2 rounded font-bold"
+              disabled={!isValidEmail}
+              className="w-full bg-blue-600 p-2 rounded font-bold disabled:opacity-50"
             >
               Send Reset Link
             </button>

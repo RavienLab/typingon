@@ -5,7 +5,6 @@ import { Keyboard } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import TypingAuthModal from "@/components/typing/TypingAuthModal";
 import { useQuery } from "@tanstack/react-query";
 import StreakFlame from "@/components/StreakFlame";
 import { signOut, useSession } from "next-auth/react";
@@ -129,14 +128,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </header>
 
       <main>{children}</main>
-
-      <TypingAuthModal
-        open={showAuth}
-        onClose={() => setShowAuth(false)}
-        onGuest={() => {
-          setShowAuth(false);
-        }}
-      />
     </div>
   );
 }
