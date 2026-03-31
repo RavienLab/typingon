@@ -107,6 +107,12 @@ export default function SignUpPage() {
             Log In
           </button>
         </p>
+        <button
+          onClick={() => router.push("/forgot-password")}
+          className="text-sm text-blue-400 hover:underline"
+        >
+          Forgot password?
+        </button>
       </div>
     </div>
   );
