@@ -1,4 +1,4 @@
-import "./globals.css"; 
+import "./globals.css";
 import { Providers } from "./providers";
 import { MotionProvider } from "@/components/MotionProvider";
 import { Inter } from "next/font/google";
@@ -6,9 +6,12 @@ import { Inter } from "next/font/google";
 const inter = Inter({
   subsets: ["latin"],
   display: "swap",
-}); 
+});
 
 export const metadata = {
+  icons: {
+    icon: "/favicon.ico",
+  },
   title: {
     default: "TypingOn — Train. Measure. Master.",
     template: "%s · TypingOn",
