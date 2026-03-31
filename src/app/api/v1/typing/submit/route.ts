@@ -44,7 +44,7 @@ export async function POST(req: Request) {
       },
     });
 
-    if (recent > 5) {
+    if (recent >= 3) {
       return NextResponse.json(
         { error: "Too many submissions" },
         { status: 429 },
@@ -55,10 +55,15 @@ export async function POST(req: Request) {
   // ─────────────────────────────────────────────
   // 🔒 Load & validate session
   // ─────────────────────────────────────────────
-  const typingSession = await prisma.typingSession.findUnique({
-    where: { id: sessionId },
+  const typingSession = await prisma.typingSession.update({
+    where: {
+      id: sessionId,
+      endedAt: null,
+    },
+    data: {
+      endedAt: new Date(),
+    },
   });
-
   if (!typingSession) {
     return NextResponse.json({ error: "Invalid session" }, { status: 403 });
   }
@@ -66,13 +71,6 @@ export async function POST(req: Request) {
   // If logged in, session must belong to user
   if (userId && typingSession.userId !== userId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  if (typingSession.endedAt) {
-    return NextResponse.json(
-      { error: "Session already submitted" },
-      { status: 409 },
-    );
   }
 
   // Enforce real elapsed time
@@ -108,7 +106,14 @@ export async function POST(req: Request) {
 
   if (intervals.length > 0) {
     const avg = intervals.reduce((a, b) => a + b, 0) / intervals.length;
-    if (avg < 30) {
+    const variance =
+      intervals.reduce((acc, val) => acc + Math.abs(val - avg), 0) /
+      intervals.length;
+
+    if (avg < 30 || variance < 5) {
+      return NextResponse.json({ error: "Bot detected" }, { status: 400 });
+    }
+    {
       return NextResponse.json({ error: "Bot detected" }, { status: 400 });
     }
   }
@@ -129,44 +134,43 @@ export async function POST(req: Request) {
   // ─────────────────────────────────────────────
   // 💾 Save result (guest-safe)
   // ─────────────────────────────────────────────
-  const result = await prisma.typingResult.create({
-    data: {
-      sessionId,
-      userId: userId ?? null, // ✅ PHASE 17 FIX
-      wpm: stats.wpm,
-      rawWpm: stats.rawWpm,
-      accuracy: stats.accuracy,
-      errors: keystrokes.filter((k: any) => !k.correct).length,
-      backspaces,
-      keystrokes,
-      wpmTimeline,
-    },
-  });
-  await prisma.dailyChallenge.updateMany({
-    where: {
-      userId: session?.user?.id,
-      completed: false,
-    },
-    data: {
-      completed: true,
-    },
-  });
+  let result: any;
 
-  if (session?.user?.id) {
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+  await prisma.$transaction(async (tx) => {
+    result = await tx.typingResult.create({
+      data: {
+        sessionId,
+        userId,
+        wpm: stats.wpm,
+        rawWpm: stats.rawWpm,
+        accuracy: stats.accuracy,
+        errors: keystrokes.filter((k: any) => !k.correct).length,
+        backspaces,
+        keystrokes,
+        wpmTimeline,
+      },
     });
 
-    // ─────────────────────────────────────────────
-    // 🏆 Leaderboard Upsert
-    // ─────────────────────────────────────────────
+    await tx.dailyChallenge.updateMany({
+      where: {
+        userId,
+        completed: false,
+      },
+      data: {
+        completed: true,
+      },
+    });
 
-    const previous = await prisma.leaderboardEntry.findUnique({
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+    });
+
+    const previous = await tx.leaderboardEntry.findUnique({
       where: { userId },
     });
 
     if (!previous) {
-      await prisma.leaderboardEntry.create({
+      await tx.leaderboardEntry.create({
         data: {
           userId,
           username: user?.name || "Anonymous",
@@ -177,11 +181,10 @@ export async function POST(req: Request) {
       });
     } else {
       const totalTests = previous.tests + 1;
-
       const newAvg =
         (previous.avgWpm * previous.tests + stats.wpm) / totalTests;
 
-      await prisma.leaderboardEntry.update({
+      await tx.leaderboardEntry.update({
         where: { userId },
         data: {
           bestWpm: Math.max(previous.bestWpm, stats.wpm),
@@ -195,7 +198,6 @@ export async function POST(req: Request) {
     const last = user?.lastActive ? new Date(user.lastActive) : null;
 
     const isSameDay = last && last.toDateString() === today.toDateString();
-
     const isNextDay =
       last &&
       new Date(last.getTime() + 86400000).toDateString() ===
@@ -207,31 +209,14 @@ export async function POST(req: Request) {
     if (!isSameDay && !isNextDay) streak = 1;
 
     const best = Math.max(user?.bestStreak || 0, streak);
-    const pb = Math.max(user?.personalBest || 0, result.wpm);
+    const pb = Math.max(user?.personalBest || 0, stats.wpm);
+
     const gainedXP = calculateXP(stats.wpm, stats.accuracy);
     const newXP = (user?.xp || 0) + gainedXP;
     const newLevel = levelFromXP(newXP);
 
-    // ─────────────────────────────────────────────
-    // 🏅 Achievement Grants
-    // ─────────────────────────────────────────────
-
-    await grantAchievement(userId, "first_test");
-
-    if (stats.wpm >= 80) {
-      await grantAchievement(userId, "speed_80");
-    }
-
-    if (stats.accuracy === 100) {
-      await grantAchievement(userId, "accuracy_100");
-    }
-
-    if (streak >= 7) {
-      await grantAchievement(userId, "streak_7");
-    }
-
-    await prisma.user.update({
-      where: { id: session.user.id },
+    await tx.user.update({
+      where: { id: userId },
       data: {
         currentStreak: streak,
         bestStreak: best,
@@ -241,14 +226,6 @@ export async function POST(req: Request) {
         level: newLevel,
       },
     });
-  }
-
-  // ─────────────────────────────────────────────
-  // 🔒 Close session
-  // ─────────────────────────────────────────────
-  await prisma.typingSession.update({
-    where: { id: sessionId },
-    data: { endedAt: new Date() },
   });
 
   // ─────────────────────────────────────────────

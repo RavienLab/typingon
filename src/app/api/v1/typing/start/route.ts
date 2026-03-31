@@ -15,11 +15,7 @@ export async function POST(req: Request) {
     body = {};
   }
 
-  const {
-    mode = "test",
-    duration = 60,
-    textType = "paragraph",
-  } = body;
+  const { mode = "test", duration = 60, textType = "paragraph" } = body;
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -34,12 +30,20 @@ export async function POST(req: Request) {
     : 0;
 
   if (!session?.user?.isPro && used >= 1) {
-    return NextResponse.json(
-      { error: "Daily limit reached" },
-      { status: 403 },
-    );
+    return NextResponse.json({ error: "Daily limit reached" }, { status: 403 });
   }
+  const recentSessions = await prisma.typingSession.count({
+    where: {
+      userId: session?.user?.id ?? null,
+      startedAt: {
+        gt: new Date(Date.now() - 10000),
+      },
+    },
+  });
 
+  if (recentSessions > 3) {
+    return NextResponse.json({ error: "Too many sessions" }, { status: 429 });
+  }
   const typingSession = await prisma.typingSession.create({
     data: {
       userId: session?.user?.id ?? null,

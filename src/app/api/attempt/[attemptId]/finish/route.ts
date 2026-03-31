@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/server/db";
 import { AttemptStatus } from "@prisma/client";
 import crypto from "crypto";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export async function POST(
   _: Request,
-  { params }: { params: { attemptId: string } }
+  { params }: { params: { attemptId: string } },
 ) {
   const { attemptId } = params;
 
@@ -16,15 +18,28 @@ export async function POST(
         keystrokes: true,
       },
     });
+    const session = await getServerSession(authOptions);
 
+    // 1. attempt exists
     if (!attempt) {
       return NextResponse.json({ error: "Attempt not found" }, { status: 404 });
     }
 
+    // 2. ownership check
+    if (!session?.user?.id || attempt.userId !== session.user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // 🔥 3. ADD HERE
+    if (attempt.status === "finished") {
+      return NextResponse.json({ error: "Already finished" }, { status: 409 });
+    }
+
+    // 4. existing check
     if (attempt.status !== "started" && attempt.status !== "resumed") {
       return NextResponse.json(
         { error: "Attempt not in finishable state" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -40,8 +55,7 @@ export async function POST(
     }
 
     const durationMs =
-      attempt.startedAt &&
-      Date.now() - attempt.startedAt.getTime();
+      attempt.startedAt && Date.now() - attempt.startedAt.getTime();
 
     const minutes = (durationMs ?? 1) / 60000;
     const rawWpm = totalChars / 5 / minutes;
