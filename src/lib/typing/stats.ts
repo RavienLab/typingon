@@ -18,29 +18,55 @@ const STATS_KEY = "typingon:stats:v1";
    Existing stats calculation
    (UNCHANGED)
 ================================ */
-
 export function calculateStats(
   keystrokes: { time: number; correct: boolean }[],
-  startTime: number
+  startTime: number,
 ) {
+  // ✅ filter only valid keystrokes
+  const validKeystrokes = keystrokes.filter(
+    (k) => typeof k.correct === "boolean",
+  );
+
+  const totalChars = validKeystrokes.length;
+  const correctChars = validKeystrokes.filter((k) => k.correct).length;
+
+  // ✅ safer duration calculation
   const durationMs =
-    keystrokes.length > 0
-      ? keystrokes[keystrokes.length - 1].time - startTime
+    totalChars > 0
+      ? validKeystrokes[validKeystrokes.length - 1].time - startTime
       : 0;
+
+  // 🚨 anti-cheat: too fast = invalid
+  if (durationMs < 5000) {
+    return {
+      rawWpm: 0,
+      wpm: 0,
+      accuracy: 0,
+    };
+  }
 
   const minutes = durationMs / 60000;
 
-  const chars = keystrokes.length;
-  const correct = keystrokes.filter((k) => k.correct).length;
+  // ✅ proper WPM formulas
+  const rawWpm = minutes > 0 ? totalChars / 5 / minutes : 0;
+  const netWpm = minutes > 0 ? correctChars / 5 / minutes : 0;
 
-  const rawWpm = minutes > 0 ? chars / 5 / minutes : 0;
-  const wpm = minutes > 0 ? correct / 5 / minutes : 0;
-  const accuracy = chars > 0 ? (correct / chars) * 100 : 100;
+  const accuracy = totalChars > 0 ? (correctChars / totalChars) * 100 : 100;
 
+  // 🚨 sanity check (should never happen)
+  if (rawWpm < netWpm) {
+    return {
+      rawWpm: 0,
+      wpm: 0,
+      accuracy: 0,
+    };
+  }
+
+  // ❗ DO NOT round here (keep precision)
   return {
-    rawWpm: Math.round(rawWpm),
-    wpm: Math.round(wpm),
-    accuracy: Math.round(accuracy),
+    rawWpm,
+    wpm: netWpm,
+    accuracy,
   };
 }
 
@@ -74,7 +100,7 @@ export function saveModeRun(
   data: {
     errors: number;
     durationMs: number;
-  }
+  },
 ) {
   const stats = loadModeStats();
 
