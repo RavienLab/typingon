@@ -43,11 +43,10 @@ export default function AuthPage() {
       password,
       redirect: false,
     });
-
     if (res?.ok) {
       router.replace("/test");
     } else {
-      alert("Invalid credentials");
+      alert(res?.error || "Login failed");
     }
 
     setLoading(false);
@@ -83,8 +82,8 @@ export default function AuthPage() {
           {step === "email"
             ? "Welcome"
             : step === "login"
-            ? "Welcome Back"
-            : "Create Account"}
+              ? "Welcome Back"
+              : "Create Account"}
         </h1>
 
         {/* EMAIL STEP */}

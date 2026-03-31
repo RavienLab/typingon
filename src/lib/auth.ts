@@ -33,6 +33,11 @@ export const authOptions: NextAuthOptions = {
 
         if (!valid) return null;
 
+        // 🔒 BLOCK UNVERIFIED USERS
+        if (!user.emailVerified) {
+          throw new Error("Please verify your email before logging in");
+        }
+
         return user;
       },
     }),

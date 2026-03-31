@@ -45,7 +45,8 @@ export default function SignUpPage() {
         router.replace("/test");
       }
     } else {
-      alert("Registration failed");
+      const data = await res.json();
+      alert(data.error || "Signup failed");
       setLoading(false);
     }
   }
