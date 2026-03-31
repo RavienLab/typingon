@@ -145,6 +145,7 @@ model TypingResult {
 
   session     TypingSession? @relation(fields: [sessionId], references: [id])
   user        User?          @relation(fields: [userId], references: [id])
+  attemptId   String?        @unique
 
   @@index([userId])
   @@index([wpm])

@@ -99,7 +99,6 @@ export async function POST(req: Request) {
       );
     }
   }
-  console.log("KEYSTROKES SAMPLE", keystrokes.slice(0, 5));
 
   // ─────────────────────────────────────────────
   // 🧠 Human timing check

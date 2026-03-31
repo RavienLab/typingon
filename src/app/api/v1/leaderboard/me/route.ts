@@ -9,15 +9,16 @@ export async function GET() {
     return NextResponse.json(null);
   }
 
+  const me = await prisma.leaderboardEntry.findUnique({
+    where: { userId: session.user.id },
+    select: { bestWpm: true },
+  });
+
+  if (!me) return NextResponse.json({ rank: null });
+
   const better = await prisma.leaderboardEntry.count({
     where: {
-      bestWpm: {
-        gt: (
-          await prisma.leaderboardEntry.findUnique({
-            where: { userId: session.user.id },
-          })
-        )?.bestWpm || 0,
-      },
+      bestWpm: { gt: me.bestWpm },
     },
   });
 

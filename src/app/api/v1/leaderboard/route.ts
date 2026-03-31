@@ -32,6 +32,9 @@ export async function GET(req: Request) {
 
   const entries = await prisma.leaderboardEntry.findMany({
     where,
+    orderBy: {
+      bestWpm: "desc",
+    },
     take: limit,
     select: {
       userId: true,
@@ -50,24 +53,8 @@ export async function GET(req: Request) {
     },
   });
 
-  const ranked = entries
-    .map((e) => {
-      const accuracyNorm = (e.accuracy ?? 95) / 100;
-
-      const score =
-        e.avgWpm * 0.6 +
-        e.bestWpm * 0.2 +
-        e.avgWpm * accuracyNorm * 0.2;
-
-      return {
-        ...e,
-        score,
-      };
-    })
-    .sort((a, b) => b.score - a.score);
-
   return NextResponse.json(
-    ranked.map((e, i) => ({
+    entries.map((e, i) => ({
       rank: i + 1,
       user: {
         id: e.userId,
@@ -77,7 +64,6 @@ export async function GET(req: Request) {
       wpm: e.bestWpm,
       avgWpm: e.avgWpm,
       tests: e.tests,
-      score: Math.round(e.score),
-    }))
+    })),
   );
 }

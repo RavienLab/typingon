@@ -29,5 +29,4 @@ export async function seedAchievements() {
     });
   }
 
-  console.log("✅ Achievements synced (with versioning)");
 }

@@ -5,16 +5,22 @@ export function useSaveResult() {
 
   return useMutation({
     mutationFn: async (data: any) => {
+      const payload = {
+        ...data,
+        attemptId: crypto.randomUUID(), // 🔥 ADD THIS
+      };
+
       const res = await fetch("/api/results", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
-        throw new Error("Failed to save result");
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error || "Failed to save result");
       }
 
       return res.json();

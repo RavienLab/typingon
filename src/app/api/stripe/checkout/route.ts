@@ -17,14 +17,14 @@ export async function POST() {
 
   const session = await getServerSession(authOptions);
 
-  if (!session?.user?.id || !session?.user?.email) {
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const checkout = await stripe.checkout.sessions.create({
     mode: "subscription",
     payment_method_types: ["card"],
-    customer_email: session.user.email,
+    customer_email: session.user.email ?? undefined,
     line_items: [
       {
         price: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID!,

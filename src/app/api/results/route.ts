@@ -13,30 +13,58 @@ export async function POST(req: Request) {
 
   const body = await req.json();
 
-  if (
-    typeof body.wpm !== "number" ||
-    typeof body.accuracy !== "number" ||
-    body.wpm <= 0 ||
-    body.accuracy < 0 ||
-    body.accuracy > 100
-  ) {
+  const { wpm, accuracy, durationMs = 0, attemptId } = body;
+
+  // basic type checks
+  if (typeof wpm !== "number" || typeof accuracy !== "number") {
     return NextResponse.json({ error: "Invalid data" }, { status: 400 });
   }
 
-  if (body.wpm > 300) {
-    return NextResponse.json({ error: "Unrealistic WPM" }, { status: 400 });
+  // stricter anti-cheat rules
+  if (wpm <= 0 || wpm > 180) {
+    return NextResponse.json({ error: "Suspicious WPM" }, { status: 400 });
+  }
+
+  if (accuracy < 0 || accuracy > 100) {
+    return NextResponse.json({ error: "Invalid accuracy" }, { status: 400 });
+  }
+
+  // unrealistic combo detection
+  if (wpm > 120 && accuracy < 85) {
+    return NextResponse.json(
+      { error: "Invalid score combination" },
+      { status: 400 },
+    );
+  }
+
+  // too short = fake
+  if (durationMs < 15000) {
+    return NextResponse.json({ error: "Test too short" }, { status: 400 });
+  }
+
+  // duplicate protection
+  if (!attemptId) {
+    return NextResponse.json({ error: "Missing attemptId" }, { status: 400 });
+  }
+
+  const existingAttempt = await prisma.typingResult.findFirst({
+    where: { attemptId },
+  });
+
+  if (existingAttempt) {
+    return NextResponse.json(
+      { error: "Duplicate submission" },
+      { status: 400 },
+    );
   }
 
   const userId = session.user.id;
   const username = session.user.name || "User";
 
   const {
-    wpm,
     rawWpm,
-    accuracy,
     errors,
     backspaces = 0,
-    durationMs = 0,
     practiceMode = "english",
     paragraph = "",
     keystrokes = [],
@@ -52,6 +80,7 @@ export async function POST(req: Request) {
     // ✅ Save result
     await tx.typingResult.create({
       data: {
+        attemptId,
         userId,
         wpm,
         rawWpm,
@@ -104,24 +133,19 @@ export async function POST(req: Request) {
       select: { personalBest: true, xp: true },
     });
 
-    const updated = await tx.user.update({
-      where: { id: userId },
-      data: {
-        xp: { increment: earnedXP },
-        personalBest: Math.max(user?.personalBest ?? 0, wpm),
-        lastActive: new Date(),
-      },
-      select: { xp: true },
-    });
-
-    const newLevel = Math.floor(updated.xp / 1000) + 1;
+    const newXP = (user?.xp ?? 0) + earnedXP;
+    const newLevel = Math.floor(newXP / 1000) + 1;
 
     await tx.user.update({
       where: { id: userId },
-      data: { level: newLevel },
+      data: {
+        xp: newXP,
+        level: newLevel,
+        personalBest: Math.max(user?.personalBest ?? 0, wpm),
+        lastActive: new Date(),
+      },
     });
   });
-  console.log("⏱️ API time:", Date.now() - start, "ms");
   return NextResponse.json({
     success: true,
     xpEarned: earnedXP,
