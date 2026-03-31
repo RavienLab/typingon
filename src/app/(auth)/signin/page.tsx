@@ -184,7 +184,7 @@ export default function AuthPage() {
             <button
               onClick={() => {
                 localStorage.setItem("reset_email", email);
-                localStorage.setItem("auth_intent", "existing"); // 🔥 ADD THIS
+                localStorage.setItem("auth_intent", "existing");
                 router.push("/forgot-password");
               }}
               className="text-sm text-blue-400 hover:underline"
