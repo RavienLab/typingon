@@ -163,6 +163,18 @@ export default function AuthPage() {
             </button>
           </>
         )}
+
+        {/* 🔥 ALWAYS VISIBLE */}
+        {email && (
+          <div className="pt-2">
+            <button
+              onClick={() => router.push("/forgot-password")}
+              className="text-sm text-blue-400 hover:underline"
+            >
+              Forgot password?
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
