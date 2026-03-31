@@ -27,12 +27,18 @@ export default function AuthPage() {
     }
   }, []);
 
+  useEffect(() => {
+    if (step !== "email" && !email) {
+      setStep("email");
+    }
+  }, [step, email]);
+
   async function checkEmail() {
     setLoading(true);
 
     const res = await fetch("/api/auth/check-email", {
       method: "POST",
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email: email.trim() }),
       headers: { "Content-Type": "application/json" },
     });
 
@@ -51,7 +57,7 @@ export default function AuthPage() {
     setLoading(true);
 
     const res = await signIn("credentials", {
-      email,
+      email: email.trim(),
       password,
       redirect: false,
     });
@@ -80,7 +86,7 @@ export default function AuthPage() {
 
     if (res.ok) {
       await signIn("credentials", {
-        email,
+        email: email.trim(),
         password,
         redirect: false,
       });
@@ -91,7 +97,8 @@ export default function AuthPage() {
 
       router.replace("/test");
     } else {
-      alert("Signup failed");
+      const data = await res.json();
+      alert(data.error || "Signup failed");
       setLoading(false);
     }
   }
@@ -130,7 +137,7 @@ export default function AuthPage() {
         {/* LOGIN STEP */}
         {step === "login" && (
           <>
-            <p className="text-sm text-white/60">{email}</p>
+            <p className="text-sm text-white/60 break-all">{email}</p>
 
             <input
               type={showPassword ? "text" : "password"}
@@ -161,6 +168,13 @@ export default function AuthPage() {
             />
 
             <input
+              className="w-full p-2 bg-slate-800 rounded"
+              placeholder="Email"
+              value={email}
+              disabled
+            />
+
+            <input
               type={showPassword ? "text" : "password"}
               className="w-full p-2 bg-slate-800 rounded"
               placeholder="Password"
@@ -179,20 +193,20 @@ export default function AuthPage() {
         )}
 
         {/* 🔥 ALWAYS VISIBLE */}
-        {email && (
-          <div className="pt-2">
-            <button
-              onClick={() => {
+        <div className="pt-2">
+          <button
+            onClick={() => {
+              if (email) {
                 localStorage.setItem("reset_email", email);
-                localStorage.setItem("auth_intent", "existing");
-                router.push("/forgot-password");
-              }}
-              className="text-sm text-blue-400 hover:underline"
-            >
-              Forgot password?
-            </button>
-          </div>
-        )}
+              }
+              localStorage.setItem("auth_intent", "existing");
+              router.push("/forgot-password");
+            }}
+            className="text-sm text-blue-400 hover:underline"
+          >
+            Forgot password?
+          </button>
+        </div>
       </div>
     </div>
   );

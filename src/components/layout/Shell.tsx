@@ -81,7 +81,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                     className="w-8 h-8 rounded-full object-cover border border-white/10"
                     alt="avatar"
                   />
-                ) : ( 
+                ) : (
                   <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white text-sm font-bold">
                     {session.user?.name?.charAt(0).toUpperCase() || "U"}
                   </div>
@@ -105,16 +105,16 @@ export function Shell({ children }: { children: React.ReactNode }) {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => {
-  localStorage.setItem("auth_intent", "existing");
-  router.push("/signin");
-}}
+                    localStorage.setItem("auth_intent", "existing");
+                    router.push("/signin");
+                  }}
                   className="px-4 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-sm font-medium transition"
                 >
                   Log In
                 </button>
 
                 <button
-                  onClick={() => router.push("/signup")}
+                  onClick={() => router.push("/signin")}
                   className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-semibold transition"
                 >
                   Create Account
