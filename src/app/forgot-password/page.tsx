@@ -1,15 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [done, setDone] = useState(false);
+  const params = useSearchParams();
 
   useEffect(() => {
-    const saved = localStorage.getItem("reset_email");
-    if (saved) setEmail(saved);
-  }, []);
+    const emailParam = params.get("email");
+    if (emailParam) setEmail(emailParam);
+  }, [params]);
 
   // ✅ Email validation (used for button + logic)
   const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());

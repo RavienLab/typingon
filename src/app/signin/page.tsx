@@ -1,24 +1,58 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { motion } from "framer-motion";
+
+type Step = "email" | "login" | "signup";
 
 export default function AuthPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const [step, setStep] = useState<"email" | "login" | "signup">("email");
+  const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  // ✅ NEW: password toggle
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    const intent = localStorage.getItem("auth_intent");
+    const mode = searchParams.get("mode");
 
-    if (intent === "existing") setStep("login");
-    if (intent === "new") setStep("signup");
+    if (mode === "signup") {
+      setStep("signup");
+    } else {
+      setStep("email");
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, [step]);
+
+  useEffect(() => {
+    return () => {
+      setPassword("");
+      setName("");
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!searchParams.get("mode")) {
+      setStep("email");
+      setEmail("");
+    }
   }, []);
 
   async function checkEmail() {
+    if (!email.trim()) return;
+
+    setLoading(true);
+
     const res = await fetch("/api/auth/check-email", {
       method: "POST",
       body: JSON.stringify({ email: email.trim() }),
@@ -27,40 +61,78 @@ export default function AuthPage() {
 
     const data = await res.json();
 
+    setLoading(false);
+
     if (data.exists) setStep("login");
     else setStep("signup");
   }
 
   async function handleLogin() {
+    if (!password) return;
+
+    setLoading(true);
+
     const res = await fetch("/api/auth/login", {
       method: "POST",
-      body: JSON.stringify({ email, password }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim(), password }),
     });
 
+    setLoading(false);
+
     if (res.ok) {
-      localStorage.removeItem("auth_intent");
       router.replace("/test");
+    } else {
+      const data = await res.json();
+      alert(data.error || "Login failed");
     }
   }
 
   async function handleSignup() {
+    if (!name || !password) return;
+
+    setLoading(true);
+
     const res = await fetch("/api/auth/register", {
       method: "POST",
-      body: JSON.stringify({ name, email, password }),
       headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name,
+        email: email.trim(),
+        password,
+      }),
     });
 
+    setLoading(false);
+
     if (res.ok) {
-      localStorage.removeItem("auth_intent");
       router.replace("/test");
+    } else {
+      const data = await res.json();
+      alert(data.error || "Signup failed");
+    }
+  }
+
+  function handleKey(e: React.KeyboardEvent) {
+    if (e.key === "Enter") {
+      if (step === "email") checkEmail();
+      if (step === "login") handleLogin();
+      if (step === "signup") handleSignup();
     }
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0b1220]">
-      <div className="bg-slate-900 p-8 rounded-xl w-80 space-y-4 text-center">
+      
+      {/* ✅ FIXED: motion wrapper */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="bg-slate-900/80 backdrop-blur-xl p-8 rounded-2xl w-80 space-y-5 text-center shadow-xl border border-slate-800"
+      >
 
-        <h1 className="text-xl font-bold">
+        <h1 className="text-2xl font-semibold tracking-tight">
           {step === "email"
             ? "Welcome"
             : step === "login"
@@ -68,83 +140,132 @@ export default function AuthPage() {
             : "Create Account"}
         </h1>
 
+        {/* EMAIL */}
         {step === "email" && (
           <>
             <input
-              className="w-full p-2 bg-slate-800 rounded"
+              ref={inputRef}
+              className="w-full p-2.5 bg-slate-800/70 rounded-lg border border-slate-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition"
               placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onKeyDown={handleKey}
             />
 
             <button
               onClick={checkEmail}
-              className="w-full bg-blue-600 p-2 rounded font-bold"
+              disabled={!email}
+              className="w-full bg-blue-600 hover:bg-blue-500 active:scale-[0.98] transition p-2.5 rounded-lg font-semibold disabled:opacity-50"
             >
-              Continue
+              {loading ? "Checking..." : "Continue"}
             </button>
           </>
         )}
 
+        {/* LOGIN */}
         {step === "login" && (
           <>
             <input
-              className="w-full p-2 bg-slate-800 rounded"
-              placeholder="Password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              className="w-full p-2.5 bg-slate-800/70 rounded-lg border border-slate-700"
+              value={email}
+              disabled
             />
+
+            {/* ✅ PASSWORD TOGGLE */}
+            <div className="relative">
+              <input
+                ref={inputRef}
+                className="w-full p-2.5 pr-10 bg-slate-800/70 rounded-lg border border-slate-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition"
+                placeholder="Password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={handleKey}
+              />
+
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+              >
+                {showPassword ? "🙈" : "👁"}
+              </button>
+            </div>
 
             <button
               onClick={handleLogin}
-              className="w-full bg-blue-600 p-2 rounded font-bold"
+              disabled={!password}
+              className="w-full bg-blue-600 hover:bg-blue-500 active:scale-[0.98] transition p-2.5 rounded-lg font-semibold disabled:opacity-50"
             >
-              Log In
+              {loading ? "Processing..." : "Log In"}
             </button>
           </>
         )}
 
+        {/* SIGNUP */}
         {step === "signup" && (
           <>
             <input
-              className="w-full p-2 bg-slate-800 rounded"
+              ref={inputRef}
+              className="w-full p-2.5 bg-slate-800/70 rounded-lg border border-slate-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition"
               placeholder="Name"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onKeyDown={handleKey}
             />
 
+            {/* Locked email */}
             <input
-              className="w-full p-2 bg-slate-800 rounded"
-              placeholder="Password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              className="w-full p-2.5 bg-slate-800/70 rounded-lg border border-slate-700"
+              value={email}
+              disabled
             />
+
+            {/* ✅ PASSWORD TOGGLE */}
+            <div className="relative">
+              <input
+                className="w-full p-2.5 pr-10 bg-slate-800/70 rounded-lg border border-slate-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition"
+                placeholder="Password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={handleKey}
+              />
+
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+              >
+                {showPassword ? "🙈" : "👁"}
+              </button>
+            </div>
 
             <button
               onClick={handleSignup}
-              className="w-full bg-blue-600 p-2 rounded font-bold"
+              disabled={!name || !password}
+              className="w-full bg-blue-600 hover:bg-blue-500 active:scale-[0.98] transition p-2.5 rounded-lg font-semibold disabled:opacity-50"
             >
-              Create Account
+              {loading ? "Creating..." : "Create Account"}
             </button>
           </>
         )}
 
+        {/* FORGOT PASSWORD */}
         {email && (
           <button
             onClick={() => {
-              localStorage.setItem("reset_email", email);
-              localStorage.setItem("auth_intent", "existing");
-              router.push("/forgot-password");
+              router.push(
+                `/forgot-password?email=${encodeURIComponent(email)}`
+              );
             }}
-            className="text-sm text-blue-400"
+            className="text-sm text-blue-400 hover:underline"
           >
             Forgot password?
           </button>
         )}
 
-      </div>
+      </motion.div>
     </div>
   );
 }
