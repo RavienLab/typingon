@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Eye, EyeOff } from "lucide-react";
@@ -14,16 +14,22 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const intent = localStorage.getItem("auth_intent");
+    const savedEmail = localStorage.getItem("reset_email");
+
+    if (savedEmail) {
+      setEmail(savedEmail);
+    }
 
     if (intent === "existing") {
-      setStep("login");
+      setStep(savedEmail ? "login" : "email");
     }
 
     if (intent === "new") {
-      setStep("signup");
+      setStep(savedEmail ? "signup" : "email");
     }
   }, []);
 
@@ -32,6 +38,10 @@ export default function AuthPage() {
       setStep("email");
     }
   }, [step, email]);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, [step]);
 
   async function checkEmail() {
     setLoading(true);
@@ -118,10 +128,14 @@ export default function AuthPage() {
         {step === "email" && (
           <>
             <input
+              ref={inputRef}
               className="w-full p-2 bg-slate-800 rounded"
               placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") checkEmail();
+              }}
             />
 
             <button
@@ -138,13 +152,16 @@ export default function AuthPage() {
         {step === "login" && (
           <>
             <p className="text-sm text-white/60 break-all">{email}</p>
-
             <input
+              ref={inputRef}
               type={showPassword ? "text" : "password"}
               className="w-full p-2 bg-slate-800 rounded"
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleLogin();
+              }}
             />
 
             <button
@@ -161,10 +178,14 @@ export default function AuthPage() {
         {step === "signup" && (
           <>
             <input
+              ref={inputRef}
               className="w-full p-2 bg-slate-800 rounded"
               placeholder="Name"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSignup();
+              }}
             />
 
             <input
@@ -180,6 +201,9 @@ export default function AuthPage() {
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSignup();
+              }}
             />
 
             <button

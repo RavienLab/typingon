@@ -114,7 +114,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 </button>
 
                 <button
-                  onClick={() => router.push("/signin")}
+                  onClick={() => {
+                    localStorage.setItem("auth_intent", "new");
+                    router.push("/signin");
+                  }}
                   className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-semibold transition"
                 >
                   Create Account
