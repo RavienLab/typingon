@@ -5,6 +5,7 @@ import { rateLimit } from "@/lib/rateLimit";
 import { resend } from "@/lib/email";
 import { resetPasswordTemplate } from "@/lib/emailTemplates";
 
+
 export async function POST(req: Request) {
   const ip = req.headers.get("x-forwarded-for") || "unknown";
 
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
   if (!user) {
     return NextResponse.json({ ok: true });
   }
-
+ 
   const token = randomBytes(32).toString("hex");
 
   const tokenHash = createHash("sha256").update(token).digest("hex");

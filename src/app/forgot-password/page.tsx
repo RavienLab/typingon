@@ -1,10 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [done, setDone] = useState(false);
+  useEffect(() => {
+  const saved = localStorage.getItem("reset_email");
+  if (saved) setEmail(saved);
+}, []);
 
   async function handleReset() {
     await fetch("/api/auth/forgot-password", {

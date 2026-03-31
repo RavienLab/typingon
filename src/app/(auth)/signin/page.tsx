@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Eye, EyeOff } from "lucide-react";
@@ -14,6 +14,18 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const intent = localStorage.getItem("auth_intent");
+
+    if (intent === "existing") {
+      setStep("login");
+    }
+
+    if (intent === "new") {
+      setStep("signup");
+    }
+  }, []);
 
   async function checkEmail() {
     setLoading(true);
@@ -43,7 +55,12 @@ export default function AuthPage() {
       password,
       redirect: false,
     });
+
     if (res?.ok) {
+      // 🔥 CLEAN STATE
+      localStorage.removeItem("auth_intent");
+      localStorage.removeItem("reset_email");
+
       router.replace("/test");
     } else {
       alert(res?.error || "Login failed");
@@ -67,6 +84,10 @@ export default function AuthPage() {
         password,
         redirect: false,
       });
+
+      // 🔥 CLEAN STATE
+      localStorage.removeItem("auth_intent");
+      localStorage.removeItem("reset_email");
 
       router.replace("/test");
     } else {
@@ -126,13 +147,6 @@ export default function AuthPage() {
             >
               Log In
             </button>
-
-            <button
-              onClick={() => router.push("/forgot-password")}
-              className="text-sm text-blue-400"
-            >
-              Forgot password?
-            </button>
           </>
         )}
 
@@ -168,7 +182,11 @@ export default function AuthPage() {
         {email && (
           <div className="pt-2">
             <button
-              onClick={() => router.push("/forgot-password")}
+              onClick={() => {
+                localStorage.setItem("reset_email", email);
+                localStorage.setItem("auth_intent", "existing"); // 🔥 ADD THIS
+                router.push("/forgot-password");
+              }}
               className="text-sm text-blue-400 hover:underline"
             >
               Forgot password?
