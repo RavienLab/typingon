@@ -146,7 +146,10 @@ export default function ProfilePage() {
         </div>
 
         <button
-          onClick={() => router.push("/signin?redirect=/profile")}
+          onClick={() => {
+            localStorage.setItem("auth_intent", "new");
+            router.push("/signin");
+          }}
           className="px-8 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-semibold"
         >
           Sign In / Create Account

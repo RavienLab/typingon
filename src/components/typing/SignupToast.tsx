@@ -34,7 +34,10 @@ export default function SignupToast() {
     <div className="text-center text-sm text-white/60">
       Track your progress?{" "}
       <button
-        onClick={() => router.push("/signin")}
+        onClick={() => {
+          localStorage.setItem("auth_intent", "new");
+          router.push("/signin");
+        }}
         className="text-blue-400 hover:text-blue-300 font-semibold"
       >
         Create a free account

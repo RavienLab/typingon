@@ -41,6 +41,7 @@ export default function SignUpPage() {
       });
 
       if (login?.ok) {
+        localStorage.removeItem("auth_intent"); // 🔥 ADD THIS
         router.replace("/test");
       }
     } else {
@@ -97,7 +98,10 @@ export default function SignUpPage() {
         <p className="text-sm text-white/50">
           Already have an account?{" "}
           <button
-            onClick={() => router.push("/signin")}
+            onClick={() => {
+              localStorage.setItem("auth_intent", "existing");
+              router.push("/signin");
+            }}
             className="text-blue-400 hover:underline"
           >
             Log In

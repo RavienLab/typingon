@@ -104,7 +104,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
               // 👤 GUEST
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => router.push("/signin")}
+                  onClick={() => {
+  localStorage.setItem("auth_intent", "existing");
+  router.push("/signin");
+}}
                   className="px-4 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-sm font-medium transition"
                 >
                   Log In

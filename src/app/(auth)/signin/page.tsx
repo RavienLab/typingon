@@ -21,6 +21,14 @@ export default function SignInPage() {
     }
   }, [status, router]);
 
+  useEffect(() => {
+    const intent = localStorage.getItem("auth_intent");
+
+    if (intent === "new") {
+      router.replace("/signup");
+    }
+  }, [router]);
+
   async function handleLogin() {
     setLoading(true);
 
@@ -31,6 +39,7 @@ export default function SignInPage() {
     });
 
     if (res?.ok) {
+      localStorage.removeItem("auth_intent"); // 🔥 ADD THIS
       router.replace("/test");
     } else {
       alert("Invalid email or password");
@@ -71,9 +80,7 @@ export default function SignInPage() {
         </div>
 
         {capsLock && (
-          <p className="text-yellow-400 text-xs text-left">
-            Caps Lock is ON
-          </p>
+          <p className="text-yellow-400 text-xs text-left">Caps Lock is ON</p>
         )}
 
         <button
