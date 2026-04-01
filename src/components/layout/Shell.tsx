@@ -104,7 +104,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => {
-                    router.push("/signin?mode=login");
+                    router.push("/signin");
                   }}
                   className="px-4 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-sm font-medium transition"
                 >
@@ -113,7 +113,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
                 <button
                   onClick={() => {
-                    router.push("/signin?mode=signup");
+                    router.push("/signup");
                   }}
                   className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-semibold transition"
                 >
