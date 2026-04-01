@@ -5,7 +5,6 @@ import { useTypingStore } from "@/store/typingStore";
 import { PageMotion } from "@/components/ui/PageMotion";
 import { useParagraph } from "@/components/typing/ParagraphProvider";
 import { Keyboard } from "@/components/typing/Keyboard";
-import { useSearchParams } from "next/navigation";
 import { Globe, Hash, Code2, Languages, Activity } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -101,9 +100,7 @@ export default function TypingTest() {
     }
   };
   const [started, setStarted] = useState(false);
-  const searchParams = useSearchParams();
-  const examId = searchParams.get("exam"); // ?exam=uuid
-
+  const examId = null;
   const { paragraph, practiceMode, setPracticeMode } = useParagraph();
 
   const [paused, setPaused] = useState(false);

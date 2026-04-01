@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
 
 function ForgotPasswordContent() {
   const [email, setEmail] = useState("");
@@ -17,21 +16,11 @@ function ForgotPasswordContent() {
   const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
   async function handleReset() {
-    const trimmedEmail = email.trim();
-
-    if (!trimmedEmail) {
-      alert("Email is required");
-      return;
-    }
-
-    if (!isValidEmail) {
-      alert("Enter a valid email");
-      return;
-    }
+    if (!isValidEmail) return;
 
     const res = await fetch("/api/auth/forgot-password", {
       method: "POST",
-      body: JSON.stringify({ email: trimmedEmail }),
+      body: JSON.stringify({ email }),
       headers: { "Content-Type": "application/json" },
     });
 
@@ -40,13 +29,12 @@ function ForgotPasswordContent() {
       return;
     }
 
-    localStorage.setItem("reset_email", trimmedEmail);
     setDone(true);
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0b1220]">
-      <div className="bg-slate-900/80 backdrop-blur-xl p-8 rounded-2xl w-80 space-y-5 text-center shadow-xl border border-slate-800">
+      <div className="bg-slate-900/80 p-8 rounded-2xl w-80 space-y-5 text-center">
         <h1 className="text-xl font-bold">Reset Password</h1>
 
         {done ? (
@@ -63,7 +51,7 @@ function ForgotPasswordContent() {
             <button
               onClick={handleReset}
               disabled={!isValidEmail}
-              className="w-full bg-blue-600 p-2 rounded font-bold disabled:opacity-50"
+              className="w-full bg-blue-600 p-2 rounded disabled:opacity-50"
             >
               Send Reset Link
             </button>
@@ -74,7 +62,7 @@ function ForgotPasswordContent() {
   );
 }
 
-export default function ForgotPasswordPage() {
+export default function Page() {
   return (
     <Suspense fallback={<div className="text-center mt-10">Loading...</div>}>
       <ForgotPasswordContent />
