@@ -4,34 +4,60 @@ import { createHash } from "crypto";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
-  const { token, password } = await req.json();
+  try {
+    const { token, password } = await req.json();
 
-  const tokenHash = createHash("sha256").update(token).digest("hex");
+    if (!token || !password) {
+      return NextResponse.json(
+        { error: "Token and password required" },
+        { status: 400 }
+      );
+    }
 
-  const reset = await prisma.passwordResetToken.findUnique({
-    where: { tokenHash },
-  });
+    if (password.length < 6) {
+      return NextResponse.json(
+        { error: "Password must be at least 6 characters" },
+        { status: 400 }
+      );
+    }
 
-  if (!reset || reset.expiresAt < new Date()) {
+    const tokenHash = createHash("sha256")
+      .update(token)
+      .digest("hex");
+
+    const reset = await prisma.passwordResetToken.findUnique({
+      where: { tokenHash },
+    });
+
+    if (!reset || reset.expiresAt < new Date()) {
+      return NextResponse.json(
+        { error: "Invalid or expired token" },
+        { status: 400 }
+      );
+    }
+
+    const hash = await bcrypt.hash(password, 10);
+
+    await prisma.user.update({
+      where: { email: reset.email },
+      data: {
+        password: hash,
+        passwordUpdatedAt: new Date(),
+      },
+    });
+
+    // 🧹 Delete token after use
+    await prisma.passwordResetToken.delete({
+      where: { tokenHash },
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("RESET PASSWORD ERROR:", err);
+
     return NextResponse.json(
-      { error: "Invalid or expired token" },
-      { status: 400 },
+      { error: "Something went wrong" },
+      { status: 500 }
     );
   }
-
-  const hash = await bcrypt.hash(password, 10);
-
-  await prisma.user.update({
-    where: { email: reset.email },
-    data: {
-      password: hash,
-      passwordUpdatedAt: new Date(),
-    },
-  });
-
-  await prisma.passwordResetToken.delete({
-    where: { tokenHash },
-  });
-
-  return NextResponse.json({ ok: true });
 }
