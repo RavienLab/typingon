@@ -9,13 +9,19 @@ import { Suspense } from "react";
 type Step = "email" | "login" | "signup";
 
 function AuthPageContent() {
-    const router = useRouter();
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const mode = searchParams.get("mode");
 
-  const [internalStep, setInternalStep] = useState<Step>(
-    mode === "signup" ? "signup" : "email",
-  );
+  const mode = searchParams?.get("mode");
+
+  const [internalStep, setInternalStep] = useState<Step>("email");
+
+  useEffect(() => {
+    const mode = searchParams?.get("mode");
+    if (mode === "signup") {
+      setInternalStep("signup");
+    }
+  }, [searchParams]);
 
   const step = mode === "signup" ? "signup" : internalStep;
   const inputRef = useRef<HTMLInputElement>(null);
