@@ -4,11 +4,12 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { signIn } from "next-auth/react";
+import { Suspense } from "react";
 
 type Step = "email" | "login" | "signup";
 
-export default function AuthPage() {
-  const router = useRouter();
+function AuthPageContent() {
+    const router = useRouter();
   const searchParams = useSearchParams();
   const mode = searchParams.get("mode");
 
@@ -258,5 +259,13 @@ export default function AuthPage() {
         )}
       </motion.div>
     </div>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={<div className="text-center mt-10">Loading...</div>}>
+      <AuthPageContent />
+    </Suspense>
   );
 }

@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
-export default function ForgotPassword() {
+function ForgotPasswordContent() {
   const [email, setEmail] = useState("");
   const [done, setDone] = useState(false);
   const params = useSearchParams();
@@ -13,13 +14,11 @@ export default function ForgotPassword() {
     if (emailParam) setEmail(emailParam);
   }, [params]);
 
-  // ✅ Email validation (used for button + logic)
   const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
   async function handleReset() {
     const trimmedEmail = email.trim();
 
-    // Validation
     if (!trimmedEmail) {
       alert("Email is required");
       return;
@@ -41,11 +40,7 @@ export default function ForgotPassword() {
       return;
     }
 
-    setDone(true);
-
-    // Save clean email
     localStorage.setItem("reset_email", trimmedEmail);
-
     setDone(true);
   }
 
@@ -76,5 +71,13 @@ export default function ForgotPassword() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function ForgotPasswordPage() {
+  return (
+    <Suspense fallback={<div className="text-center mt-10">Loading...</div>}>
+      <ForgotPasswordContent />
+    </Suspense>
   );
 }
