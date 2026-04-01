@@ -23,20 +23,20 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
+        const email = credentials.email.toLowerCase().trim();
+
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
+          where: { email },
         });
 
         if (!user || !user.password) return null;
 
-        const valid = await bcrypt.compare(credentials.password, user.password);
+        const valid = await bcrypt.compare(
+          credentials.password.trim(),
+          user.password,
+        );
 
         if (!valid) return null;
-
-        // 🔒 BLOCK UNVERIFIED USERS
-        if (!user.emailVerified) {
-          throw new Error("Please verify your email before logging in");
-        }
 
         return user;
       },
