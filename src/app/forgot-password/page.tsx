@@ -30,11 +30,18 @@ export default function ForgotPassword() {
       return;
     }
 
-    await fetch("/api/auth/forgot-password", {
+    const res = await fetch("/api/auth/forgot-password", {
       method: "POST",
       body: JSON.stringify({ email: trimmedEmail }),
       headers: { "Content-Type": "application/json" },
     });
+
+    if (!res.ok) {
+      alert("Failed to send reset email");
+      return;
+    }
+
+    setDone(true);
 
     // Save clean email
     localStorage.setItem("reset_email", trimmedEmail);
@@ -44,7 +51,7 @@ export default function ForgotPassword() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0b1220]">
-      <div className="bg-slate-900 p-8 rounded-xl w-80 space-y-4 text-center">
+      <div className="bg-slate-900/80 backdrop-blur-xl p-8 rounded-2xl w-80 space-y-5 text-center shadow-xl border border-slate-800">
         <h1 className="text-xl font-bold">Reset Password</h1>
 
         {done ? (

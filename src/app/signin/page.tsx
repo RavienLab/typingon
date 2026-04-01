@@ -3,15 +3,22 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
+import { signIn } from "next-auth/react";
 
 type Step = "email" | "login" | "signup";
 
 export default function AuthPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const mode = searchParams.get("mode");
+
+  const [internalStep, setInternalStep] = useState<Step>(
+    mode === "signup" ? "signup" : "email",
+  );
+
+  const step = mode === "signup" ? "signup" : internalStep;
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
@@ -19,16 +26,6 @@ export default function AuthPage() {
 
   // ✅ NEW: password toggle
   const [showPassword, setShowPassword] = useState(false);
-
-  useEffect(() => {
-    const mode = searchParams.get("mode");
-
-    if (mode === "signup") {
-      setStep("signup");
-    } else {
-      setStep("email");
-    }
-  }, [searchParams]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -43,10 +40,10 @@ export default function AuthPage() {
 
   useEffect(() => {
     if (!searchParams.get("mode")) {
-      setStep("email");
+      setInternalStep("email");
       setEmail("");
     }
-  }, []);
+  }, [searchParams]);
 
   async function checkEmail() {
     if (!email.trim()) return;
@@ -63,8 +60,8 @@ export default function AuthPage() {
 
     setLoading(false);
 
-    if (data.exists) setStep("login");
-    else setStep("signup");
+    if (data.exists) setInternalStep("login");
+    else setInternalStep("signup");
   }
 
   async function handleLogin() {
@@ -72,19 +69,18 @@ export default function AuthPage() {
 
     setLoading(true);
 
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: email.trim(), password }),
+    const res = await signIn("credentials", {
+      email: email.trim(),
+      password,
+      redirect: false,
     });
 
     setLoading(false);
 
-    if (res.ok) {
-      router.replace("/test");
+    if (!res?.ok) {
+      alert("Invalid credentials");
     } else {
-      const data = await res.json();
-      alert(data.error || "Login failed");
+      router.replace("/test");
     }
   }
 
@@ -123,7 +119,6 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0b1220]">
-      
       {/* ✅ FIXED: motion wrapper */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
@@ -131,13 +126,12 @@ export default function AuthPage() {
         transition={{ duration: 0.3 }}
         className="bg-slate-900/80 backdrop-blur-xl p-8 rounded-2xl w-80 space-y-5 text-center shadow-xl border border-slate-800"
       >
-
         <h1 className="text-2xl font-semibold tracking-tight">
           {step === "email"
             ? "Welcome"
             : step === "login"
-            ? "Welcome Back"
-            : "Create Account"}
+              ? "Welcome Back"
+              : "Create Account"}
         </h1>
 
         {/* EMAIL */}
@@ -252,19 +246,16 @@ export default function AuthPage() {
         )}
 
         {/* FORGOT PASSWORD */}
-        {email && (
+        {step === "login" && (
           <button
-            onClick={() => {
-              router.push(
-                `/forgot-password?email=${encodeURIComponent(email)}`
-              );
-            }}
-            className="text-sm text-blue-400 hover:underline"
+            onClick={() =>
+              router.push(`/forgot-password?email=${encodeURIComponent(email)}`)
+            }
+            className="text-sm text-blue-400 hover:underline text-left"
           >
             Forgot password?
           </button>
         )}
-
       </motion.div>
     </div>
   );

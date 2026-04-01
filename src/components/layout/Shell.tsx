@@ -104,7 +104,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => {
-                    router.push("/signin");
+                    router.push("/signin?mode=login");
                   }}
                   className="px-4 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-sm font-medium transition"
                 >
