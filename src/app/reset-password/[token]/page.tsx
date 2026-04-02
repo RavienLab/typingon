@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 
 export default function ResetPassword() {
   const { token } = useParams();
@@ -34,7 +35,18 @@ export default function ResetPassword() {
     });
 
     if (res.ok) {
-      router.replace("/signin"); // ✅ FIXED ROUTE
+      const email = localStorage.getItem("reset_email");
+
+      if (email) {
+        await signIn("credentials", {
+          email,
+          password: trimmedPassword,
+          redirect: true,
+          callbackUrl: "/test",
+        });
+      } else {
+        router.replace("/signin");
+      }
     } else {
       alert("Failed to reset password");
     }

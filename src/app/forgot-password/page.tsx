@@ -23,11 +23,14 @@ function ForgotPasswordContent() {
       body: JSON.stringify({ email }),
       headers: { "Content-Type": "application/json" },
     });
-
+    
     if (!res.ok) {
       alert("Failed to send reset email");
       return;
     }
+
+    // ✅ STORE EMAIL FOR AUTO LOGIN
+    localStorage.setItem("reset_email", email.trim());
 
     setDone(true);
   }

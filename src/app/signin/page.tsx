@@ -11,6 +11,7 @@ export default function SignInPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   async function handleLogin() {
     if (!email || !password) return;
@@ -26,7 +27,7 @@ export default function SignInPage() {
     setLoading(false);
 
     if (!res?.ok) {
-      alert("Invalid email or password");
+      setError("Invalid email or password");
     } else {
       router.replace("/test");
     }
@@ -44,19 +45,27 @@ export default function SignInPage() {
         <input
           className="w-full p-2 bg-slate-800 rounded"
           placeholder="Email"
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            setError("");
+          }}
         />
 
         <input
           className="w-full p-2 bg-slate-800 rounded"
           type="password"
           placeholder="Password"
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            setError("");
+          }}
         />
+        {error && <p className="text-red-400 text-sm">{error}</p>}
 
         <button
           onClick={handleLogin}
-          className="w-full bg-blue-600 p-2 rounded"
+          disabled={!email || !password || loading}
+          className="w-full bg-blue-600 p-2 rounded disabled:opacity-50"
         >
           {loading ? "Logging in..." : "Log In"}
         </button>
