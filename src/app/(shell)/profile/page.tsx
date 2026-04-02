@@ -127,7 +127,7 @@ export default function ProfilePage() {
   if (isGuest) {
     return (
       <div className="max-w-xl mx-auto py-24 text-center space-y-6">
-        <div className="text-2xl font-bold">Hey Newbie 👋</div>
+        <div className="text-xl sm:text-2xl font-bold">Hey Newbie 👋</div>
 
         <div className="text-white/60">Create Your Typing Profile</div>
 
@@ -205,12 +205,12 @@ export default function ProfilePage() {
 
   const isAtRisk = streak > 0 && !didUserPlayToday;
   return (
-    <div className="max-w-6xl mx-auto px-6 py-12 space-y-10">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-8 sm:space-y-10">
       {/* ================= TOP CARD ================= */}
 
       <div
         className={`
-    bg-slate-900/70 border border-slate-800 rounded-2xl p-8 flex items-center gap-6
+    bg-slate-900/70 border border-slate-800 rounded-2xl p-4 sm:p-6 md:p-8 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6
     ${me?.isPro ? "shadow-[0_0_30px_rgba(255,180,0,0.3)]" : ""}
   `}
       >
@@ -219,7 +219,7 @@ export default function ProfilePage() {
         {/* Info */}
         <div>
           <div className="flex items-center gap-3">
-            <h2 className="text-2xl font-bold">
+            <h2 className="text-xl sm:text-2xl font-bold">
               {me?.name ?? session?.user?.name ?? "User"}
               <span className="ml-2 text-sm text-blue-400">
                 Level {me?.level ?? 1}
@@ -251,11 +251,11 @@ export default function ProfilePage() {
           </div>
         </div>
         {/* Upgrade */}
-        <div className="ml-auto">
+        <div className="w-full sm:w-auto sm:ml-auto">
           <button
             onClick={handleUpgrade}
             disabled={!me || me?.isPro || upgrading}
-            className={`px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all duration-300 transform active:scale-95
+            className={`w-full sm:w-auto px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl font-bold flex items-center gap-2 transition-all duration-300 transform active:scale-95
   ${
     me?.isPro
       ? "bg-green-500 text-black"
@@ -286,7 +286,7 @@ export default function ProfilePage() {
 
       {/* ================= STREAK + WEEKLY ACTIVITY ================= */}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         {/* Daily Streak Card */}
         <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -304,7 +304,7 @@ export default function ProfilePage() {
           </div>
 
           {!loadingStreak && (
-            <div className="text-sm text-white/50">
+            <div className="text-xs sm:text-sm text-white/50 text-right sm:text-left">
               {streak > 0
                 ? "Keep your streak alive today."
                 : "Start your streak today."}
@@ -333,7 +333,7 @@ export default function ProfilePage() {
 
       {/* ================= PERFORMANCE ================= */}
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
         <StatBox
           icon={<BarChart3 size={18} />}
           label="Tests"
@@ -347,10 +347,10 @@ export default function ProfilePage() {
         />
 
         <StatBox icon={<Zap size={18} />} label="Best WPM" value={bestWpm} />
-        <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 text-center">
+        <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-4 sm:p-6 text-center">
           <div className="text-sm text-white/50">Level</div>
 
-          <div className="text-4xl font-black text-blue-400">
+          <div className="text-2xl sm:text-3xl md:text-4xl font-black text-blue-400">
             {xpData?.level || 1}
           </div>
 
@@ -366,7 +366,7 @@ export default function ProfilePage() {
         <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6">
           <h3 className="text-lg font-bold mb-4">Accuracy by Finger</h3>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
             {Object.keys(fingers).length === 0 ? (
               <div className="text-white/50 text-sm col-span-full text-center">
                 Complete a few tests to see finger accuracy.
@@ -398,7 +398,7 @@ export default function ProfilePage() {
 
       {/* ================= LOWER GRID ================= */}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
         {/* Recent Activity */}
         <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6">
           <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
@@ -415,7 +415,7 @@ export default function ProfilePage() {
               {recent.slice(0, 5).map((r: any, i: number) => (
                 <div
                   key={i}
-                  className="flex justify-between bg-white/5 p-3 rounded-lg text-sm"
+                  className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0 bg-white/5 p-3 rounded-lg text-sm"
                 >
                   <span>{r.practiceMode?.toUpperCase()}</span>
                   <span>{r.wpm} WPM</span>
@@ -434,7 +434,7 @@ export default function ProfilePage() {
           {achievements.length === 0 ? (
             <p className="text-white/50">No achievements yet</p>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
               {achievements.map((a: any) => (
                 <div
                   key={a.achievement.id}
@@ -467,10 +467,10 @@ function StatBox({
   value: number;
 }) {
   return (
-    <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 text-center">
+    <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-4 sm:p-6 text-center">
       <div className="flex justify-center mb-2 text-blue-400">{icon}</div>
       <div className="text-sm text-white/50 mb-1">{label}</div>
-      <div className="text-4xl font-black">{value}</div>
+      <div className="text-2xl sm:text-3xl md:text-4xl font-black">{value}</div>
     </div>
   );
 }

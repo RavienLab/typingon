@@ -347,8 +347,8 @@ export default function TypingTest() {
     <PageMotion>
       {/* LANGUAGE BAR */}
       <div className="border-b border-slate-800">
-        <div className="max-w-6xl mx-auto px-6 py-4">
-          <div className="flex gap-3 text-xs uppercase tracking-wider text-white/50">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
+          <div className="flex gap-2 sm:gap-3 overflow-x-auto no-scrollbar text-xs uppercase tracking-wider text-white/50">
             {MODES.map(({ label, value, icon: Icon }) => {
               const active = value === practiceMode;
 
@@ -358,7 +358,7 @@ export default function TypingTest() {
                   disabled={index > 0}
                   onClick={() => setPracticeMode(value)}
                   className={`
-    flex items-center gap-2 px-4 py-1.5 rounded-full border transition
+    flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border transition
     ${
       active
         ? "border-blue-500 text-blue-400 bg-blue-500/10"
@@ -380,10 +380,10 @@ export default function TypingTest() {
       <div className="h-6" />
 
       {/* MAIN */}
-      <div className="min-h-[calc(100vh-220px)] flex flex-col justify-center">
-        <div className="max-w-6xl mx-auto px-6 flex flex-col gap-8">
+      <div className="min-h-[calc(100vh-180px)] sm:min-h-[calc(100vh-220px)] flex flex-col justify-start sm:justify-center">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col gap-8">
           {/* STATS */}
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             <Stat label="WPM" value={liveStats.wpm} color="text-emerald-400" />
             <Stat
               label="Accuracy"
@@ -430,7 +430,7 @@ export default function TypingTest() {
 
           {/* TYPING CARD */}
           <div className="flex flex-col gap-7">
-            <div className="relative bg-slate-900 rounded-2xl border border-slate-800 h-[180px] px-8 py-6 shadow-2xl cursor-text">
+            <div className="relative bg-slate-900 rounded-2xl border border-slate-800 h-[140px] sm:h-[180px] px-4 sm:px-8 py-4 sm:py-6 shadow-2xl cursor-text">
               {paused && (
                 <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 backdrop-blur-sm rounded-2xl">
                   <div className="text-white/80 text-sm tracking-wide">
@@ -468,10 +468,12 @@ export default function TypingTest() {
                 </details>
               )}
             </div>
-            <Keyboard
-              expectedKey={graphemes[index]}
-              lastCorrect={derivedLastCorrect}
-            />
+            <div className="scale-[0.85] sm:scale-100 origin-top">
+              <Keyboard
+                expectedKey={graphemes[index]}
+                lastCorrect={derivedLastCorrect}
+              />
+            </div>
           </div>
 
           {/* <ErrorBar errors={errors} /> */}
@@ -493,11 +495,13 @@ function Stat({
   color?: string;
 }) {
   return (
-    <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 flex flex-col items-center">
+    <div className="bg-slate-800/50 p-3 sm:p-4 rounded-xl border border-slate-700 flex flex-col items-center">
       <span className="text-slate-400 text-xs uppercase tracking-widest">
         {label}
       </span>
-      <span className={`text-4xl font-black ${color}`}>{value}</span>
+      <span className={`text-2xl sm:text-4xl font-black ${color}`}>
+        {value}
+      </span>
     </div>
   );
 }

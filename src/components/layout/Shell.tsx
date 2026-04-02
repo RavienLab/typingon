@@ -37,7 +37,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#0b1220] text-white">
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0b1220]/80 backdrop-blur">
-        <div className="max-w-7xl mx-auto h-14 px-6 flex items-center">
+        <div className="max-w-7xl mx-auto h-14 px-3 sm:px-6 flex items-center">
           {/* LEFT — LOGO */}
           <div className="flex items-center gap-2 select-none">
             <Keyboard
@@ -56,12 +56,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
 
           {/* CENTER — NAV */}
-          <div className="mx-auto">
+          <div className="mx-auto hidden sm:block">
             <NavTabs />
           </div>
 
           {/* RIGHT — USER */}
-          <div className="flex justify-end items-center gap-4 min-w-fit">
+          <div className="flex justify-end items-center gap-2 sm:gap-4 min-w-fit">
             {status === "authenticated" ? (
               // ✅ LOGGED-IN USER
               <div className="flex items-center gap-3 text-sm text-white/70">
@@ -87,14 +87,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 )}
 
                 {/* 🧑 NAME */}
-                <span className="max-w-[90px] truncate font-medium">
+                <span className="max-w-[60px] sm:max-w-[120px] truncate font-medium">
                   {session.user?.name ?? session.user?.email?.split("@")[0]}
                 </span>
 
                 {/* 🚪 LOGOUT */}
                 <button
                   onClick={() => signOut({ callbackUrl: "/" })}
-                  className="text-xs px-3 py-1 rounded-md bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition"
+                  className="text-xs px-2 sm:px-3 py-1 rounded-md bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition"
                 >
                   Logout
                 </button>
@@ -106,7 +106,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                   onClick={() => {
                     router.push("/signin");
                   }}
-                  className="px-4 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-sm font-medium transition"
+                  className="px-3 sm:px-4 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-xs sm:text-sm font-medium transition whitespace-nowrap"
                 >
                   Log In
                 </button>
@@ -115,7 +115,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                   onClick={() => {
                     router.push("/signup");
                   }}
-                  className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-semibold transition"
+                  className="px-3 sm:px-4 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-xs sm:text-sm font-semibold transition whitespace-nowrap"
                 >
                   Create Account
                 </button>
@@ -124,6 +124,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </header>
+      <div className="sm:hidden border-b border-white/10 bg-[#0b1220]/80 backdrop-blur">
+        <NavTabs />
+      </div>
 
       <main>{children}</main>
     </div>
@@ -142,7 +145,7 @@ function NavTabs() {
   ];
 
   return (
-    <div className="flex gap-1 bg-white/5 rounded-lg p-1 text-sm">
+    <div className="flex gap-1 bg-white/5 rounded-lg p-1 text-xs sm:text-sm overflow-x-auto">
       {tabs.map((tab) => {
         const active =
           tab.href === "/test"
@@ -153,7 +156,7 @@ function NavTabs() {
           <Link
             key={tab.href}
             href={tab.href}
-            className={`px-4 py-1.5 rounded-md transition
+            className={`px-3 sm:px-4 py-1.5 whitespace-nowrap rounded-md transition
         ${
           active
             ? "bg-white/15 text-white"

@@ -12,7 +12,6 @@ export default function ResetPassword() {
   async function handleReset() {
     const trimmedPassword = password.trim();
 
-    // Basic validation (don’t allow empty or weak input)
     if (!trimmedPassword) {
       alert("Password is required");
       return;
@@ -26,7 +25,7 @@ export default function ResetPassword() {
     const res = await fetch("/api/auth/reset-password", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json", // ✅ FIXED
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         token,
@@ -53,12 +52,12 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0b1220]">
-      <div className="bg-slate-900 p-8 rounded-xl w-80 space-y-4 text-center">
-        <h1 className="text-xl font-bold">Set New Password</h1>
+    <div className="min-h-screen flex items-center justify-center bg-[#0b1220] px-4">
+      <div className="bg-slate-900 p-6 sm:p-8 rounded-xl w-full max-w-sm space-y-4 text-center">
+        <h1 className="text-lg sm:text-xl font-bold">Set New Password</h1>
 
         <input
-          className="w-full p-2 bg-slate-800 rounded"
+          className="w-full p-2.5 sm:p-3 bg-slate-800 rounded text-sm sm:text-base"
           placeholder="New Password"
           type="password"
           value={password}
@@ -67,7 +66,7 @@ export default function ResetPassword() {
 
         <button
           onClick={handleReset}
-          className="w-full bg-blue-600 hover:bg-blue-500 p-2 rounded font-bold"
+          className="w-full bg-blue-600 hover:bg-blue-500 p-2.5 sm:p-3 rounded text-sm sm:text-base font-bold"
         >
           Reset Password
         </button>

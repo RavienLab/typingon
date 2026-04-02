@@ -34,16 +34,16 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0b1220]">
+    <div className="min-h-screen flex items-center justify-center bg-[#0b1220] px-4">
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-slate-900/80 p-8 rounded-2xl w-80 space-y-5 text-center"
+        className="bg-slate-900/80 backdrop-blur-xl p-6 sm:p-8 rounded-2xl w-full max-w-sm space-y-5 text-center shadow-xl border border-slate-800"
       >
-        <h1 className="text-xl font-bold">Welcome Back</h1>
+        <h1 className="text-lg sm:text-xl font-bold">Welcome Back</h1>
 
         <input
-          className="w-full p-2 bg-slate-800 rounded"
+          className="w-full p-2.5 sm:p-3 bg-slate-800 rounded-lg text-sm sm:text-base"
           placeholder="Email"
           onChange={(e) => {
             setEmail(e.target.value);
@@ -52,7 +52,7 @@ export default function SignInPage() {
         />
 
         <input
-          className="w-full p-2 bg-slate-800 rounded"
+          className="w-full p-2.5 sm:p-3 bg-slate-800 rounded-lg text-sm sm:text-base"
           type="password"
           placeholder="Password"
           onChange={(e) => {
@@ -60,12 +60,13 @@ export default function SignInPage() {
             setError("");
           }}
         />
+
         {error && <p className="text-red-400 text-sm">{error}</p>}
 
         <button
           onClick={handleLogin}
           disabled={!email || !password || loading}
-          className="w-full bg-blue-600 p-2 rounded disabled:opacity-50"
+          className="w-full bg-blue-600 hover:bg-blue-500 p-2.5 sm:p-3 rounded-lg text-sm sm:text-base font-semibold transition disabled:opacity-50 active:scale-95"
         >
           {loading ? "Logging in..." : "Log In"}
         </button>

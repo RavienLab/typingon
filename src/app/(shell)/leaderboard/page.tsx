@@ -71,7 +71,7 @@ export default function LeaderboardPage() {
 
   return (
     <PageMotion>
-      <div className="max-w-5xl mx-auto px-6 py-12 space-y-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-8">
         {/* TITLE */}
         <div>
           <h1 className="text-3xl font-black">Leaderboard</h1>
@@ -86,13 +86,9 @@ export default function LeaderboardPage() {
             <button
               key={t}
               onClick={() => setType(t as any)}
-              className={`px-5 py-2 rounded-lg text-sm font-semibold transition
-                ${
-                  type === t
-                    ? "bg-blue-600 text-white"
-                    : "text-white/60 hover:text-white"
-                }
-              `}
+              className={`px-3 sm:px-5 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold transition
+  ${type === t ? "bg-blue-600 text-white" : "text-white/60 hover:text-white"}
+`}
             >
               {t.toUpperCase()}
             </button>
@@ -114,12 +110,12 @@ export default function LeaderboardPage() {
 
           <div className="bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden">
             {/* HEADER */}
-            <div className="grid grid-cols-12 px-6 py-4 text-sm text-white/50 border-b border-slate-800">
-              <div className="col-span-1">#</div>
-              <div className="col-span-5">User</div>
-              <div className="col-span-2 text-right">Best</div>
-              <div className="col-span-2 text-right">Avg</div>
-              <div className="col-span-2 text-right">Tests</div>
+            <div className="grid grid-cols-12 px-3 sm:px-6 py-2 sm:py-4 text-xs sm:text-sm text-white/50 border-b border-slate-800">
+              <div className="col-span-2 sm:col-span-1">#</div>
+              <div className="col-span-10 sm:col-span-5">User</div>
+              <div className="col-span-4 sm:col-span-2 text-right">Best</div>
+              <div className="col-span-4 sm:col-span-2 text-right">Avg</div>
+              <div className="col-span-4 sm:col-span-2 text-right">Tests</div>
             </div>
 
             {/* ROWS */}
@@ -134,7 +130,7 @@ export default function LeaderboardPage() {
                 return (
                   <div
                     key={row.user.id}
-                    className={`grid grid-cols-12 px-6 py-4 border-b border-slate-800 last:border-none items-center transition
+                    className={`grid grid-cols-12 px-3 sm:px-6 py-2 sm:py-4 text-xs sm:text-sm border-b border-slate-800 last:border-none items-center transition
               ${
                 isCurrentUser
                   ? "bg-yellow-500/10 ring-1 ring-yellow-400/30"
@@ -143,7 +139,7 @@ export default function LeaderboardPage() {
             `}
                   >
                     {/* Rank */}
-                    <div className="col-span-1 font-bold">
+                    <div className="col-span-2 sm:col-span-1 font-bold">
                       {row.rank === 1 && "🥇"}
                       {row.rank === 2 && "🥈"}
                       {row.rank === 3 && "🥉"}
@@ -151,7 +147,7 @@ export default function LeaderboardPage() {
                     </div>
 
                     {/* User */}
-                    <div className="col-span-5 flex items-center gap-3">
+                    <div className="col-span-10 sm:col-span-5 flex items-center gap-2 sm:gap-3">
                       <Avatar src={row.user.image} />
 
                       <div>
@@ -173,17 +169,17 @@ export default function LeaderboardPage() {
                     </div>
 
                     {/* Best WPM */}
-                    <div className="col-span-2 text-right font-black text-emerald-400">
+                    <div className="col-span-4 sm:col-span-2 text-right font-black text-emerald-400">
                       {row.wpm}
                     </div>
 
                     {/* Avg WPM */}
-                    <div className="col-span-2 text-right text-blue-400">
+                    <div className="col-span-4 sm:col-span-2 text-right text-blue-400">
                       {Math.round(row.avgWpm)}
                     </div>
 
                     {/* Tests */}
-                    <div className="col-span-2 text-right text-white/70">
+                    <div className="col-span-4 sm:col-span-2 text-right text-white/70">
                       {row.tests}
                     </div>
                   </div>
@@ -219,7 +215,7 @@ function Avatar({ src }: { src: string | null }) {
     const initial = "U";
 
     return (
-      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-sm font-bold">
+      <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-sm font-bold">
         {initial}
       </div>
     );

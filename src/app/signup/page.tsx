@@ -25,24 +25,24 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0b1220]">
-      <div className="bg-slate-900/80 p-8 rounded-2xl w-80 space-y-4 text-center">
-        <h1 className="text-xl font-bold">Create Account</h1>
+    <div className="min-h-screen flex items-center justify-center bg-[#0b1220] px-4">
+      <div className="bg-slate-900/80 p-6 sm:p-8 rounded-2xl w-full max-w-sm space-y-4 text-center">
+        <h1 className="text-lg sm:text-xl font-bold">Create Account</h1>
 
         <input
-          className="w-full p-2 bg-slate-800 rounded"
+          className="w-full p-2.5 sm:p-3 bg-slate-800 rounded text-sm sm:text-base"
           placeholder="Name"
           onChange={(e) => setName(e.target.value)}
         />
 
         <input
-          className="w-full p-2 bg-slate-800 rounded"
+          className="w-full p-2.5 sm:p-3 bg-slate-800 rounded text-sm sm:text-base"
           placeholder="Email"
           onChange={(e) => setEmail(e.target.value)}
         />
 
         <input
-          className="w-full p-2 bg-slate-800 rounded"
+          className="w-full p-2.5 sm:p-3 bg-slate-800 rounded text-sm sm:text-base"
           type="password"
           placeholder="Password"
           onChange={(e) => setPassword(e.target.value)}
@@ -50,7 +50,7 @@ export default function SignupPage() {
 
         <button
           onClick={handleSignup}
-          className="w-full bg-blue-600 p-2 rounded"
+          className="w-full bg-blue-600 p-2.5 sm:p-3 rounded text-sm sm:text-base"
         >
           Create Account
         </button>

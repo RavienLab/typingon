@@ -23,7 +23,7 @@ function ForgotPasswordContent() {
       body: JSON.stringify({ email }),
       headers: { "Content-Type": "application/json" },
     });
-    
+
     if (!res.ok) {
       alert("Failed to send reset email");
       return;
@@ -36,16 +36,18 @@ function ForgotPasswordContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0b1220]">
-      <div className="bg-slate-900/80 p-8 rounded-2xl w-80 space-y-5 text-center">
-        <h1 className="text-xl font-bold">Reset Password</h1>
+    <div className="min-h-screen flex items-center justify-center bg-[#0b1220] px-4">
+      <div className="bg-slate-900/80 backdrop-blur-xl p-6 sm:p-8 rounded-2xl w-full max-w-sm space-y-5 text-center shadow-xl border border-slate-800">
+        <h1 className="text-lg sm:text-xl font-semibold">Reset Password</h1>
 
         {done ? (
-          <p className="text-green-400">Check your email</p>
+          <p className="text-green-400 text-sm sm:text-base">
+            Check your email
+          </p>
         ) : (
           <>
             <input
-              className="w-full p-2 bg-slate-800 rounded"
+              className="w-full p-2.5 sm:p-3 bg-slate-800 rounded-lg text-sm sm:text-base outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -54,7 +56,7 @@ function ForgotPasswordContent() {
             <button
               onClick={handleReset}
               disabled={!isValidEmail}
-              className="w-full bg-blue-600 p-2 rounded disabled:opacity-50"
+              className="w-full bg-blue-600 hover:bg-blue-500 p-2.5 sm:p-3 rounded-lg font-semibold transition disabled:opacity-50"
             >
               Send Reset Link
             </button>
