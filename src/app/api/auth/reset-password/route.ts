@@ -39,12 +39,13 @@ export async function POST(req: Request) {
     const hash = await bcrypt.hash(password, 10);
 
     await prisma.user.update({
-      where: { email: reset.email },
-      data: {
-        password: hash,
-        passwordUpdatedAt: new Date(),
-      },
-    });
+  where: { email: reset.email },
+  data: {
+    password: hash,
+    passwordUpdatedAt: new Date(),
+    emailVerified: new Date(), // ✅ ADD THIS
+  },
+});
 
     // 🧹 Delete token after use
     await prisma.passwordResetToken.delete({
