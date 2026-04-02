@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   adapter: PrismaAdapter(prisma),
@@ -37,6 +38,11 @@ export const authOptions: NextAuthOptions = {
         );
 
         if (!valid) return null;
+
+        // ✅ ADD IT HERE (IMPORTANT POSITION)
+        if (!user.emailVerified) {
+          throw new Error("Please verify your email before logging in");
+        }
 
         return user;
       },

@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
-import crypto from "crypto";
+import { randomBytes, createHash } from "crypto";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -46,21 +46,25 @@ export async function POST(req: Request) {
         password: hash,
         name,
         image: "/avatar.png",
-        emailVerified: false, // ✅ IMPORTANT
+        emailVerified: null, // ✅ IMPORTANT
       },
     });
+    // 🔐 Generate secure token
+    const token = randomBytes(32).toString("hex");
 
-    // 🔐 Create verification token
-    const token = crypto.randomUUID();
+    // 🔐 Hash it (store only hash)
+    const tokenHash = createHash("sha256").update(token).digest("hex");
 
+    // 💾 Store hash in DB
     await prisma.verificationToken.create({
       data: {
         identifier: normalizedEmail,
-        token,
-        expires: new Date(Date.now() + 1000 * 60 * 60), // 1 hour
+        token: tokenHash,
+        expires: new Date(Date.now() + 1000 * 60 * 60),
       },
     });
 
+    // 🔗 Send original token in link
     const verifyUrl = `${process.env.NEXT_PUBLIC_APP_URL}/verify?token=${token}`;
 
     // 📩 Send email

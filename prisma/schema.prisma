@@ -25,7 +25,7 @@ model User {
   currentStreak     Int               @default(0)
   lastActive        DateTime?
   personalBest      Int               @default(0)
-  emailVerified     Boolean           @default(false)
+  emailVerified     DateTime?
   accounts          Account[]
   attempts          Attempt[]
   challenges        DailyChallenge[]
