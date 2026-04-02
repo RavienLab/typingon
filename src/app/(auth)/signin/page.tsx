@@ -4,12 +4,14 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function SignInPage() {
   const router = useRouter();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -50,16 +52,25 @@ export default function SignInPage() {
             setError("");
           }}
         />
+        <div className="relative">
+          <input
+            className="w-full p-2.5 sm:p-3 pr-10 bg-slate-800 rounded-lg text-sm sm:text-base"
+            type={showPassword ? "text" : "password"}
+            placeholder="Password"
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setError("");
+            }}
+          />
 
-        <input
-          className="w-full p-2.5 sm:p-3 bg-slate-800 rounded-lg text-sm sm:text-base"
-          type="password"
-          placeholder="Password"
-          onChange={(e) => {
-            setPassword(e.target.value);
-            setError("");
-          }}
-        />
+          <button
+            type="button"
+            onClick={() => setShowPassword((prev) => !prev)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white"
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
 
         {error && <p className="text-red-400 text-sm">{error}</p>}
 
