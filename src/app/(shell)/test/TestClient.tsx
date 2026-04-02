@@ -10,7 +10,6 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { INSCRIPT_MAP } from "@/lib/typing/inscript";
 import TypingParagraph from "@/components/typing/TypingParagraph";
-import { useQueryClient } from "@tanstack/react-query";
 import { useSaveResult } from "@/hooks/useSaveResult";
 
 /* ---------------- CONSTANTS ---------------- */
@@ -104,15 +103,13 @@ export default function TypingTest() {
   const { paragraph, practiceMode, setPracticeMode } = useParagraph();
 
   const [paused, setPaused] = useState(false);
-  const [attemptId, setAttemptId] = useState<string | null>(null);
   // 🔵 Keystroke chunk batching
-  const chunkBuffer = useRef<any[]>([]);
-  const sequenceRef = useRef(0);
+
   const hasSubmittedRef = useRef(false);
 
   const [showExamNotice, setShowExamNotice] = useState(false);
   const router = useRouter();
-  const queryClient = useQueryClient();
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   /* ---------- START TEST + CREATE ATTEMPT ---------- */
 
@@ -132,26 +129,19 @@ export default function TypingTest() {
       timerStartRef.current = null;
       setStarted(false);
       setDisplayElapsedMs(0);
-
-      // 🔴 CREATE ATTEMPT
+      // ✅ CREATE TYPING SESSION
       (async () => {
-        if (!examId || !paragraph?.id) return;
-
-        const res = await fetch("/api/attempt/create", {
+        const res = await fetch("/api/v1/typing/start", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            examId,
-            paragraphId: paragraph.id,
-            clientFingerprint: navigator.userAgent,
-          }),
         });
+
         if (!res.ok) {
-          throw new Error("Failed to create attempt");
+          console.error("Failed to create session");
+          return;
         }
 
         const data = await res.json();
-        setAttemptId(data.attemptId);
+        setSessionId(data.sessionId);
       })();
     }
   }, [paragraph.text, paragraph.id]);
@@ -167,17 +157,16 @@ export default function TypingTest() {
   const stateRef = useRef({
     text,
     index,
-    attemptId,
     paused,
   });
 
   useEffect(() => {
-    stateRef.current = { text, index, attemptId, paused };
-  }, [text, index, attemptId, paused]);
+    stateRef.current = { text, index, paused };
+  }, [text, index, paused]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      const { text, index, attemptId, paused } = stateRef.current;
+      const { text, index, paused } = stateRef.current;
 
       if (e.key === "Escape") {
         e.preventDefault();
@@ -203,17 +192,6 @@ export default function TypingTest() {
 
         input(char);
 
-        if (attemptId) {
-          const entry = {
-            t: Date.now(),
-            c: char,
-            ok: char === text[index],
-          };
-
-          chunkBuffer.current.push(entry);
-          sequenceRef.current++;
-        }
-
         return;
       }
 
@@ -222,32 +200,12 @@ export default function TypingTest() {
         startTimer();
 
         input(e.key);
-
-        if (attemptId) {
-          const entry = {
-            t: Date.now(),
-            c: e.key,
-            ok: e.key === text[index],
-          };
-
-          chunkBuffer.current.push(entry);
-          sequenceRef.current++;
-        }
       }
     };
 
     window.addEventListener("keydown", onKeyDown, { passive: true });
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [practiceMode, input]);
-
-  useEffect(() => {
-    if (!attemptId) return;
-    if (index !== 1) return; // 🔒 first character only
-
-    fetch(`/api/attempt/${attemptId}/start`, {
-      method: "POST",
-    });
-  }, [index, attemptId]);
 
   useEffect(() => {
     if (index === 0) return;
@@ -343,31 +301,21 @@ export default function TypingTest() {
 
       // 🔥 background safe
       try {
-        if (attemptId && chunkBuffer.current.length > 0) {
-          fetch(`/api/attempt/${attemptId}/keystrokes`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              sequenceStart: sequenceRef.current - chunkBuffer.current.length,
-              sequenceEnd: sequenceRef.current - 1,
-              data: chunkBuffer.current,
-            }),
-          }).catch(() => {});
-
-          chunkBuffer.current = [];
-        }
-
-        if (session?.user?.id) {
+        if (sessionId && session?.user?.id) {
           saveResultMutation.mutate({
-            wpm: stats.wpm,
-            rawWpm: stats.rawWpm,
-            accuracy: stats.accuracy,
-            errors,
-            backspaces: 0,
-            durationMs: stats.elapsedMs,
-            practiceMode,
-            paragraph: text,
-            keystrokes,
+            sessionId,
+            keystrokes: keystrokes.map((k) => ({
+              key: k.key,
+              time: k.time,
+              correct: k.correct,
+            })),
+            wpmTimeline: [],
+            backspaces: keystrokes.filter((k) => k.key === "Backspace").length,
+          });
+        } else {
+          console.warn("Missing sessionId or userId", {
+            sessionId,
+            user: session?.user,
           });
         }
 
@@ -378,71 +326,6 @@ export default function TypingTest() {
       }
     });
   }, [finished]);
-
-  useEffect(() => {
-    if (!attemptId) return;
-
-    const onVisibility = () => {
-      fetch(`/api/attempt/${attemptId}/focus`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          visible: !document.hidden,
-        }),
-      });
-    };
-
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, [attemptId]);
-
-  useEffect(() => {
-    if (!attemptId) return;
-
-    const onUnload = () => {
-      navigator.sendBeacon(
-        `/api/attempt/${attemptId}/abort`,
-        JSON.stringify({ reason: "unload" }),
-      );
-    };
-
-    window.addEventListener("beforeunload", onUnload);
-    return () => window.removeEventListener("beforeunload", onUnload);
-  }, [attemptId]);
-
-  // 🔵 Flush keystroke chunks every 2 seconds
-  useEffect(() => {
-    if (!attemptId) return;
-
-    const interval = setInterval(async () => {
-      if (chunkBuffer.current.length === 0) return;
-
-      const temp = [...chunkBuffer.current];
-
-      const payload = {
-        sequenceStart: sequenceRef.current - temp.length,
-        sequenceEnd: sequenceRef.current - 1,
-        data: temp,
-      };
-
-      chunkBuffer.current = [];
-
-      try {
-        const res = await fetch(`/api/attempt/${attemptId}/keystrokes`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-
-        if (!res.ok) throw new Error("Request failed");
-      } catch {
-        // 🔥 restore lost data
-        chunkBuffer.current.unshift(...temp);
-      }
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [attemptId]);
 
   const wrongIndexes = useMemo(() => {
     if (!keystrokes.length) return new Set<number>();
