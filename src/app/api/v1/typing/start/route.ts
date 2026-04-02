@@ -29,7 +29,7 @@ export async function POST(req: Request) {
       })
     : 0;
 
-  if (!session?.user?.isPro && used >= 1) {
+  if (!session?.user?.isPro && used >= 50) {  // if i got start 403 error i should have to comment out this line 
     return NextResponse.json({ error: "Daily limit reached" }, { status: 403 });
   }
   const recentSessions = await prisma.typingSession.count({
@@ -53,5 +53,5 @@ export async function POST(req: Request) {
     },
   });
 
-  return NextResponse.json({ id: typingSession.id });
+  return NextResponse.json({ sessionId: typingSession.id });
 }

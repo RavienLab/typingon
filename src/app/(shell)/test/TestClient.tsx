@@ -136,7 +136,8 @@ export default function TypingTest() {
         });
 
         if (!res.ok) {
-          console.error("Failed to create session");
+          const err = await res.json().catch(() => ({}));
+          console.error("SESSION ERROR:", err);
           return;
         }
 
