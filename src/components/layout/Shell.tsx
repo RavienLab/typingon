@@ -129,6 +129,25 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </div>
 
       <main>{children}</main>
+      <footer className="border-t border-white/10 mt-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs sm:text-sm text-white/50">
+          {/* LEFT */}
+          <div>© {new Date().getFullYear()} TypingON</div>
+
+          {/* RIGHT LINKS */}
+          <div className="flex gap-4 sm:gap-6">
+            <Link href="/privacy" className="hover:text-white transition">
+              Privacy
+            </Link>
+            <Link href="/terms" className="hover:text-white transition">
+              Terms
+            </Link>
+            <Link href="/contact" className="hover:text-white transition">
+              Contact
+            </Link>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
