@@ -22,6 +22,10 @@ export async function GET() {
   const results = await prisma.typingResult.findMany({
     where: { userId },
     select: { keystrokes: true },
+    orderBy: {
+      createdAt: "desc",
+    },
+    take: 30, // ✅ limit recent data only
   });
 
   const stats: Record<string, FingerStat> = {};
@@ -49,8 +53,7 @@ export async function GET() {
 
   for (const finger in stats) {
     const s = stats[finger];
-    output[finger] =
-      s.total > 0 ? Math.round((s.correct / s.total) * 100) : 0;
+    output[finger] = s.total > 0 ? Math.round((s.correct / s.total) * 100) : 0;
   }
 
   return NextResponse.json(output);

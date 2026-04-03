@@ -6,7 +6,7 @@ export async function GET() {
   if (process.env.NODE_ENV === "production") {
     return NextResponse.json({ error: "Not allowed" }, { status: 403 });
   }
-
+ 
   await seedAchievements();
 
   return NextResponse.json({ ok: true, method: "GET" });

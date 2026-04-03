@@ -174,3 +174,11 @@ body {
   border-radius: 2px;
   animation: caretBlink 1s infinite;
 }
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

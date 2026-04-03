@@ -15,7 +15,7 @@ export async function GET() {
   const limit = isPro ? 100 : 10;
 
   const results = await prisma.typingResult.findMany({
-    where: { userId: session.user.id },
+    where: { userId: session.user.id }, 
     orderBy: { createdAt: "desc" },
     take: limit,
     select: {

@@ -412,16 +412,52 @@ export default function ProfilePage() {
             <p className="text-white/50">No tests taken yet.</p>
           ) : (
             <div className="space-y-3">
-              {recent.slice(0, 5).map((r: any, i: number) => (
-                <div
-                  key={i}
-                  className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0 bg-white/5 p-3 rounded-lg text-sm"
-                >
-                  <span>{r.practiceMode?.toUpperCase()}</span>
-                  <span>{r.wpm} WPM</span>
-                  <span>{r.accuracy}%</span>
-                </div>
-              ))}
+              {recent
+                .filter((r: any) => r.wpm > 0 && r.accuracy > 0)
+                .slice(0, 5)
+                .map((r: any, i: number) => {
+                  const acc = Math.round(r.accuracy);
+
+                  const mode =
+                    r.textType === "words"
+                      ? "ENGLISH"
+                      : r.textType === "numbers"
+                        ? "NUMBERS"
+                        : r.textType === "code"
+                          ? "CODE"
+                          : r.textType === "marathi"
+                            ? "MARATHI"
+                            : r.textType === "hindi"
+                              ? "HINDI"
+                              : r.practiceMode?.toUpperCase() || "TEST";
+
+                  return (
+                    <div
+                      key={i}
+                      className="flex justify-between items-center bg-white/5 px-4 py-3 rounded-lg text-sm"
+                    >
+                      <span className="text-white/50 text-xs tracking-wide">
+                        {mode}
+                      </span>
+
+                      <span className="font-semibold">
+                        {Math.round(r.wpm)} WPM
+                      </span>
+
+                      <span
+                        className={
+                          acc >= 95
+                            ? "text-green-400"
+                            : acc >= 85
+                              ? "text-yellow-400"
+                              : "text-red-400"
+                        }
+                      >
+                        {acc}%
+                      </span>
+                    </div>
+                  );
+                })}
             </div>
           )}
         </div>
