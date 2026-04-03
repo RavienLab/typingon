@@ -40,6 +40,7 @@ model User {
 model TypingSession {
   id        String         @id @default(cuid())
   userId    String?
+  ipAddress String?
   mode      String
   duration  Int
   textType  String

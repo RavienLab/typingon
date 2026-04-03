@@ -106,6 +106,7 @@ export default function TypingTest() {
   // 🔵 Keystroke chunk batching
 
   const hasSubmittedRef = useRef(false);
+  const sessionCreatedRef = useRef(false);
 
   const [showExamNotice, setShowExamNotice] = useState(false);
   const router = useRouter();
@@ -120,7 +121,6 @@ export default function TypingTest() {
   useEffect(() => {
     if (!paragraph?.text) return;
 
-    // Only start test if we don't already have this paragraph loaded
     if (text !== paragraph.text) {
       hasSubmittedRef.current = false;
       setPaused(false);
@@ -129,21 +129,10 @@ export default function TypingTest() {
       timerStartRef.current = null;
       setStarted(false);
       setDisplayElapsedMs(0);
-      // ✅ CREATE TYPING SESSION
-      (async () => {
-        const res = await fetch("/api/v1/typing/start", {
-          method: "POST",
-        });
 
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          console.error("SESSION ERROR:", err);
-          return;
-        }
-
-        const data = await res.json();
-        setSessionId(data.sessionId);
-      })();
+      // ✅ reset session (IMPORTANT)
+      sessionCreatedRef.current = false;
+      setSessionId(null);
     }
   }, [paragraph.text, paragraph.id]);
 
@@ -177,6 +166,30 @@ export default function TypingTest() {
 
       if (e.ctrlKey || e.altKey || e.metaKey) return;
       if (paused) return;
+
+      // ✅ CREATE SESSION ONLY ON FIRST KEYSTROKE
+      if (!sessionCreatedRef.current) {
+        sessionCreatedRef.current = true;
+
+        fetch("/api/v1/typing/start", {
+          method: "POST",
+        })
+          .then(async (res) => {
+            if (!res.ok) {
+              const err = await res.json().catch(() => ({}));
+              console.error("SESSION ERROR:", err);
+
+              sessionCreatedRef.current = false; // allow retry
+              return;
+            }
+
+            const data = await res.json();
+            setSessionId(data.sessionId);
+          })
+          .catch(() => {
+            sessionCreatedRef.current = false;
+          });
+      }
 
       // Hindi / Marathi — InScript Exam
       if (practiceMode === "hindi" || practiceMode === "marathi") {
