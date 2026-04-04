@@ -9,6 +9,8 @@ import { useQuery } from "@tanstack/react-query";
 import StreakFlame from "@/components/StreakFlame";
 import { signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import InstallButton from "@/components/InstallButton";
+import InstallPrompt from "@/components/InstallPrompt";
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -62,6 +64,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
           {/* RIGHT — USER */}
           <div className="flex justify-end items-center gap-2 sm:gap-4 min-w-fit">
+            <InstallButton />
             {status === "authenticated" ? (
               // ✅ LOGGED-IN USER
               <div className="flex items-center gap-3 text-sm text-white/70">
@@ -127,7 +130,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <div className="sm:hidden border-b border-white/10 bg-[#0b1220]/80 backdrop-blur">
         <NavTabs />
       </div>
-
+      
+      <InstallPrompt />
       <main>{children}</main>
       <footer className="border-t border-white/10 mt-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs sm:text-sm text-white/50">

@@ -9,6 +9,8 @@ const inter = Inter({
 });
 
 export const metadata = {
+  manifest: "/manifest.json",
+
   icons: {
     icon: "/favicon.ico",
   },
@@ -27,6 +29,10 @@ export const metadata = {
     "typing trainer",
     "developer typing",
   ],
+};
+
+export const viewport = {
+  themeColor: "#0b1220",
 };
 
 export default function RootLayout({

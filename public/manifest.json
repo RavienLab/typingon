@@ -1,11 +1,11 @@
 {
-  "name": "TypingOn",
-  "short_name": "TypingOn",
+  "name": "TypingON",
+  "short_name": "TypingON",
+  "description": "Practice typing with speed and accuracy",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#000000",
-  "description": "Train. Measure. Master.",
+  "background_color": "#0b1220",
+  "theme_color": "#0b1220",
   "icons": [
     {
       "src": "/icon-192.png",
