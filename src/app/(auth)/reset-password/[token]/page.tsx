@@ -33,22 +33,28 @@ export default function ResetPassword() {
       }),
     });
 
-    if (res.ok) {
-      const email = localStorage.getItem("reset_email");
-
-      if (email) {
-        await signIn("credentials", {
-          email,
-          password: trimmedPassword,
-          redirect: true,
-          callbackUrl: "/test",
-        });
-      } else {
-        router.replace("/signin");
-      }
-    } else {
+    if (!res.ok) {
       alert("Failed to reset password");
+      return;
     }
+
+    // ✅ AUTO LOGIN FLOW (CLEAN WAY)
+    const email = prompt("Enter your email to login"); // temporary UX
+
+    if (email) {
+      const login = await signIn("credentials", {
+        email,
+        password: trimmedPassword,
+        redirect: false,
+      });
+
+      if (login?.ok) {
+        router.replace("/test");
+        return;
+      }
+    }
+
+    router.replace("/signin?reset=success");
   }
 
   return (

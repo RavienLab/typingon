@@ -29,9 +29,6 @@ function ForgotPasswordContent() {
       return;
     }
 
-    // ✅ STORE EMAIL FOR AUTO LOGIN
-    localStorage.setItem("reset_email", email.trim());
-
     setDone(true);
   }
 

@@ -135,12 +135,16 @@ export default function TypingTest() {
       setSessionId(null);
     }
   }, [paragraph.text, paragraph.id]);
-
   useEffect(() => {
-    const seen = localStorage.getItem("inscript_exam_notice_seen");
-    if (practiceMode !== "hindi" && practiceMode !== "marathi") {
-      setShowExamNotice(false);
-    }
+    try {
+      const seen = localStorage.getItem("inscript_exam_notice_seen");
+
+      if (!seen && (practiceMode === "hindi" || practiceMode === "marathi")) {
+        setShowExamNotice(true);
+      } else {
+        setShowExamNotice(false);
+      }
+    } catch {}
   }, [practiceMode]);
 
   /* ---------- INSCRIPT EXAM INPUT ---------- */
@@ -184,7 +188,7 @@ export default function TypingTest() {
             }
 
             const data = await res.json();
-            setSessionId(data.sessionId);
+            setSessionId(data.id);
           })
           .catch(() => {
             sessionCreatedRef.current = false;
@@ -304,39 +308,42 @@ export default function TypingTest() {
 
       useTypingStore.getState().setLastResult(payload);
 
-      localStorage.setItem(
-        "typing_last_result_prev",
-        localStorage.getItem("typing_last_result") || "",
-      );
+      router.push(`/test/result?id=${sessionId}`);
 
-      localStorage.setItem("typing_last_result", JSON.stringify(payload));
-
-      router.push("/test/result");
-
-      // 🔥 background safe
       try {
         if (sessionId && session?.user?.id) {
-          saveResultMutation.mutate({
-            sessionId,
-            keystrokes: keystrokes.map((k) => ({
-              key: k.key,
-              time: k.time,
-              correct: k.correct,
-            })),
-            wpmTimeline: [],
-            backspaces: keystrokes.filter((k) => k.key === "Backspace").length,
-          });
+          saveResultMutation.mutate(
+            {
+              sessionId,
+              keystrokes: keystrokes.map((k) => ({
+                key: k.key,
+                time: k.time,
+                correct: k.correct,
+              })),
+              wpmTimeline: [],
+              backspaces: keystrokes.filter((k) => k.key === "Backspace")
+                .length,
+            },
+            {
+              onSuccess: () => {
+                router.push(`/test/result?id=${sessionId}`);
+              },
+              onError: (err) => {
+                console.error("Save failed:", err);
+                router.push("/test"); // fallback
+              },
+            },
+          );
         } else {
           console.warn("Missing sessionId or userId", {
             sessionId,
             user: session?.user,
           });
+          router.push("/test");
         }
-
-        const tests = Number(localStorage.getItem("typing_tests") ?? "0") + 1;
-        localStorage.setItem("typing_tests", String(tests));
-      } catch {
-        // silent fail
+      } catch (e) {
+        console.error("Unexpected error:", e);
+        router.push("/test");
       }
     });
   }, [finished]);
@@ -390,10 +397,9 @@ export default function TypingTest() {
         </div>
       </div>
 
-      <div className="h-6" />
 
       {/* MAIN */}
-      <div className="min-h-[calc(100vh-180px)] sm:min-h-[calc(100vh-220px)] flex flex-col justify-start sm:justify-center">
+      <div className="flex-1 flex flex-col justify-center">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col gap-8">
           {/* STATS */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
@@ -432,7 +438,9 @@ export default function TypingTest() {
               <button
                 className="block mt-2 text-xs text-amber-300 underline"
                 onClick={() => {
-                  localStorage.setItem("inscript_exam_notice_seen", "1");
+                  try {
+                    localStorage.setItem("inscript_exam_notice_seen", "1");
+                  } catch {}
                   setShowExamNotice(false);
                 }}
               >

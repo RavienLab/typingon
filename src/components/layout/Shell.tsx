@@ -37,7 +37,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-[#0b1220] text-white">
+    <div className="min-h-screen flex flex-col bg-[#0b1220] text-white">
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0b1220]/80 backdrop-blur">
         <div className="max-w-7xl mx-auto h-14 px-3 sm:px-6 flex items-center">
           {/* LEFT — LOGO */}
@@ -132,8 +132,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </div>
       
       <InstallPrompt />
-      <main>{children}</main>
-      <footer className="border-t border-white/10 mt-10">
+      <main className="flex-1 flex flex-col">{children}</main>
+      <footer className="border-t border-white/10 mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs sm:text-sm text-white/50">
           {/* LEFT */}
           <div>© {new Date().getFullYear()} TypingON</div>
