@@ -120,21 +120,48 @@ export default function TypingTest() {
 
   useEffect(() => {
     if (!paragraph?.text) return;
-
     if (text !== paragraph.text) {
+      // 🔥 immediately clear old state BEFORE anything
+
       hasSubmittedRef.current = false;
       setPaused(false);
+
+      // now load new paragraph
       startTest(paragraph.text);
 
       timerStartRef.current = null;
       setStarted(false);
       setDisplayElapsedMs(0);
 
-      // ✅ reset session (IMPORTANT)
       sessionCreatedRef.current = false;
       setSessionId(null);
+
+      // 🔥 CREATE SESSION EARLY (NO RACE CONDITION)
+      if (!sessionCreatedRef.current) {
+        sessionCreatedRef.current = true;
+
+        fetch("/api/v1/typing/start", {
+          method: "POST",
+        })
+          .then(async (res) => {
+            if (!res.ok) {
+              const err = await res.json().catch(() => ({}));
+              console.error("SESSION ERROR:", err);
+
+              sessionCreatedRef.current = false; // allow retry
+              return;
+            }
+
+            const data = await res.json();
+            setSessionId(data.sessionId);
+          })
+          .catch(() => {
+            sessionCreatedRef.current = false;
+          });
+      }
     }
   }, [paragraph.text, paragraph.id]);
+
   useEffect(() => {
     try {
       const seen = localStorage.getItem("inscript_exam_notice_seen");
@@ -172,28 +199,6 @@ export default function TypingTest() {
       if (paused) return;
 
       // ✅ CREATE SESSION ONLY ON FIRST KEYSTROKE
-      if (!sessionCreatedRef.current) {
-        sessionCreatedRef.current = true;
-
-        fetch("/api/v1/typing/start", {
-          method: "POST",
-        })
-          .then(async (res) => {
-            if (!res.ok) {
-              const err = await res.json().catch(() => ({}));
-              console.error("SESSION ERROR:", err);
-
-              sessionCreatedRef.current = false; // allow retry
-              return;
-            }
-
-            const data = await res.json();
-            setSessionId(data.sessionId);
-          })
-          .catch(() => {
-            sessionCreatedRef.current = false;
-          });
-      }
 
       // Hindi / Marathi — InScript Exam
       if (practiceMode === "hindi" || practiceMode === "marathi") {
@@ -292,12 +297,6 @@ export default function TypingTest() {
 
     queueMicrotask(() => {
       const stats = liveStats;
-      if (stats.elapsedMs < 5000) {
-        console.warn("Test too short — skipping submit");
-
-        router.push(`/test/result?id=${sessionId}`);
-        return;
-      }
 
       const payload = {
         stats: {
@@ -312,7 +311,20 @@ export default function TypingTest() {
         keystrokes,
       };
 
+      // ✅ ALWAYS store result first (prevents blank screen)
       useTypingStore.getState().setLastResult(payload);
+
+      // ⚠️ If too short, skip backend but STILL show result
+      if (stats.elapsedMs < 5000) {
+        console.warn("Test too short — skipping submit");
+
+        if (sessionId) {
+          router.push(`/test/result?id=${sessionId}`);
+        } else {
+          router.push(`/test/result`);
+        }
+        return;
+      }
 
       try {
         if (sessionId && session?.user?.id) {
@@ -330,21 +342,43 @@ export default function TypingTest() {
             },
             {
               onSuccess: () => {
-                router.push(`/test/result?id=${sessionId}`);
+                if (sessionId) {
+                  router.push(`/test/result?id=${sessionId}`);
+                } else {
+                  router.push(`/test/result`);
+                }
               },
               onError: (err) => {
                 console.error("Save failed:", err);
-                router.push("/test");
+
+                // ✅ STILL go to result (fallback will show)
+                if (sessionId) {
+                  router.push(`/test/result?id=${sessionId}`);
+                } else {
+                  router.push(`/test/result`);
+                }
               },
             },
           );
         } else {
           console.warn("Missing sessionId or userId");
-          router.push("/test");
+
+          // ✅ allow guest result view
+          if (sessionId) {
+            router.push(`/test/result?id=${sessionId}`);
+          } else {
+            router.push(`/test/result`);
+          }
         }
       } catch (e) {
         console.error("Unexpected error:", e);
-        router.push("/test");
+
+        // ✅ never block result screen
+        if (sessionId) {
+          router.push(`/test/result?id=${sessionId}`);
+        } else {
+          router.push(`/test/result`);
+        }
       }
     });
   }, [finished]);

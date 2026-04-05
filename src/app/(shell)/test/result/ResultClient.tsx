@@ -47,27 +47,7 @@ export default function ResultClient() {
     };
   }, [id, router]);
 
-  /* ---------------- PRIORITY 1: SERVER DATA ---------------- */
-  if (data) {
-    return (
-      <ResultScreen
-        stats={data.stats}
-        practiceMode={data.practiceMode}
-        paragraph={data.paragraph}
-        ghostReplay={data.keystrokes?.map((k: any) => ({ time: k.time })) || []}
-        onRetry={() => {
-          useTypingStore.getState().reset();
-          router.replace("/test");
-        }}
-        onNext={() => {
-          useTypingStore.getState().reset();
-          router.replace("/test");
-        }}
-      />
-    );
-  }
-
-  /* ---------------- PRIORITY 2: LOCAL FALLBACK ---------------- */
+  /* ---------------- PRIORITY: ALWAYS SHOW LAST RESULT FIRST ---------------- */
   if (lastResult) {
     return (
       <ResultScreen
@@ -76,11 +56,41 @@ export default function ResultClient() {
         paragraph={lastResult.paragraph}
         ghostReplay={lastResult.keystrokes.map((k) => ({ time: k.time }))}
         onRetry={() => {
-          useTypingStore.getState().reset();
+          const store = useTypingStore.getState();
+          store.restartTest();
           router.replace("/test");
         }}
         onNext={() => {
-          useTypingStore.getState().reset();
+          const store = useTypingStore.getState();
+
+          // ✅ only reset typing progress (NOT text)
+          store.restartTest();
+
+          router.replace("/test");
+        }}
+      />
+    );
+  }
+
+  /* ---------------- SERVER DATA (OPTIONAL OVERRIDE) ---------------- */
+  if (data) {
+    return (
+      <ResultScreen
+        stats={data.stats}
+        practiceMode={data.practiceMode}
+        paragraph={data.paragraph}
+        ghostReplay={data.keystrokes?.map((k: any) => ({ time: k.time })) || []}
+        onRetry={() => {
+          const store = useTypingStore.getState();
+          store.restartTest();
+          router.replace("/test");
+        }}
+        onNext={() => {
+          const store = useTypingStore.getState();
+
+          // ✅ only reset typing progress (NOT text)
+          store.restartTest();
+
           router.replace("/test");
         }}
       />
