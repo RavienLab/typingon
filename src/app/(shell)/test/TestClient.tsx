@@ -188,7 +188,7 @@ export default function TypingTest() {
             }
 
             const data = await res.json();
-            setSessionId(data.id);
+            setSessionId(data.sessionId);
           })
           .catch(() => {
             sessionCreatedRef.current = false;
@@ -292,6 +292,12 @@ export default function TypingTest() {
 
     queueMicrotask(() => {
       const stats = liveStats;
+      if (stats.elapsedMs < 5000) {
+        console.warn("Test too short — skipping submit");
+
+        router.push(`/test/result?id=${sessionId}`);
+        return;
+      }
 
       const payload = {
         stats: {
@@ -307,8 +313,6 @@ export default function TypingTest() {
       };
 
       useTypingStore.getState().setLastResult(payload);
-
-      router.push(`/test/result?id=${sessionId}`);
 
       try {
         if (sessionId && session?.user?.id) {
@@ -330,15 +334,12 @@ export default function TypingTest() {
               },
               onError: (err) => {
                 console.error("Save failed:", err);
-                router.push("/test"); // fallback
+                router.push("/test");
               },
             },
           );
         } else {
-          console.warn("Missing sessionId or userId", {
-            sessionId,
-            user: session?.user,
-          });
+          console.warn("Missing sessionId or userId");
           router.push("/test");
         }
       } catch (e) {
@@ -364,10 +365,10 @@ export default function TypingTest() {
   const graphemes = useMemo(() => Array.from(text), [text]);
 
   return (
-    <PageMotion>
+    <>
       {/* LANGUAGE BAR */}
       <div className="border-b border-slate-800">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2 sm:py-3">
           <div className="flex gap-2 sm:gap-3 overflow-x-auto no-scrollbar text-xs uppercase tracking-wider text-white/50">
             {MODES.map(({ label, value, icon: Icon }) => {
               const active = value === practiceMode;
@@ -397,110 +398,117 @@ export default function TypingTest() {
         </div>
       </div>
 
-
       {/* MAIN */}
-      <div className="flex-1 flex flex-col justify-center">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col gap-8">
-          {/* STATS */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-            <Stat label="WPM" value={liveStats.wpm} color="text-emerald-400" />
-            <Stat
-              label="Accuracy"
-              value={`${liveStats.accuracy}%`}
-              color="text-blue-400"
-            />
-            <Stat
-              label="Time"
-              value={(() => {
-                const seconds = Math.floor(displayElapsedMs / 1000);
-                const mins = Math.floor(seconds / 60);
-                const secs = seconds % 60;
-                return `${mins}:${secs.toString().padStart(2, "0")}`;
-              })()}
-              color="text-amber-400"
-            />
-            <Stat
-              label="Mode"
-              value={
-                LANGUAGE_LABELS[practiceMode] ?? practiceMode.toUpperCase()
-              }
-            />
-          </div>
-
-          {showExamNotice && (
-            <div className="mb-4 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-200 text-sm">
-              <div className="font-semibold mb-1">Exam Mode Notice</div>
-              This mode uses the official InScript keyboard layout.
-              <br />
-              Phonetic typing is disabled.
-              <br />
-              Required for government & institutional exams.
-              <button
-                className="block mt-2 text-xs text-amber-300 underline"
-                onClick={() => {
-                  try {
-                    localStorage.setItem("inscript_exam_notice_seen", "1");
-                  } catch {}
-                  setShowExamNotice(false);
-                }}
-              >
-                Got it
-              </button>
+      <div className="flex flex-col pt-2 sm:pt-4 h-[calc(100vh-56px)] overflow-hidden">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col h-full">
+          {/* SCROLL AREA */}
+          <div className="flex-1 overflow-y-auto flex flex-col gap-6 pr-1">
+            {/* STATS */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 min-h-[90px]">
+              <Stat
+                label="WPM"
+                value={liveStats.wpm}
+                color="text-emerald-400"
+              />
+              <Stat
+                label="Accuracy"
+                value={`${liveStats.accuracy}%`}
+                color="text-blue-400"
+              />
+              <Stat
+                label="Time"
+                value={(() => {
+                  const seconds = Math.floor(displayElapsedMs / 1000);
+                  const mins = Math.floor(seconds / 60);
+                  const secs = seconds % 60;
+                  return `${mins}:${secs.toString().padStart(2, "0")}`;
+                })()}
+                color="text-amber-400"
+              />
+              <Stat
+                label="Mode"
+                value={
+                  LANGUAGE_LABELS[practiceMode] ?? practiceMode.toUpperCase()
+                }
+              />
             </div>
-          )}
 
-          {/* TYPING CARD */}
-          <div className="flex flex-col gap-7">
-            <div className="relative bg-slate-900 rounded-2xl border border-slate-800 h-[140px] sm:h-[180px] px-4 sm:px-8 py-4 sm:py-6 shadow-2xl cursor-text">
-              {paused && (
-                <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 backdrop-blur-sm rounded-2xl">
-                  <div className="text-white/80 text-sm tracking-wide">
-                    Paused — Press Esc to resume
-                  </div>
-                </div>
-              )}
-
-              <div className="absolute top-3 left-4 flex items-center gap-2 text-xs text-white/40">
-                <Activity size={14} className="text-emerald-400" />
-                Live Typing
+            {showExamNotice && (
+              <div className="mb-4 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-200 text-sm">
+                <div className="font-semibold mb-1">Exam Mode Notice</div>
+                This mode uses the official InScript keyboard layout.
+                <br />
+                Phonetic typing is disabled.
+                <br />
+                Required for government & institutional exams.
+                <button
+                  className="block mt-2 text-xs text-amber-300 underline"
+                  onClick={() => {
+                    try {
+                      localStorage.setItem("inscript_exam_notice_seen", "1");
+                    } catch {}
+                    setShowExamNotice(false);
+                  }}
+                >
+                  Got it
+                </button>
               </div>
+            )}
 
-              <div className="flex items-center h-full">
-                <TypingParagraph
-                  text={text}
-                  index={index}
-                  wrongIndexes={wrongIndexes}
+            {/* TYPING CARD */}
+            <div className="flex flex-col gap-2 sm:gap-3">
+              <div className="relative bg-slate-900 rounded-2xl border border-slate-800 h-[160px] sm:h-[180px] overflow-hidden px-4 sm:px-8 py-4 sm:py-6 shadow-2xl cursor-text">
+                {paused && (
+                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 backdrop-blur-sm rounded-2xl">
+                    <div className="text-white/80 text-sm tracking-wide">
+                      Paused — Press Esc to resume
+                    </div>
+                  </div>
+                )}
+
+                <div className="absolute top-3 left-4 flex items-center gap-2 text-xs text-white/40">
+                  <Activity size={14} className="text-emerald-400" />
+                  Live Typing
+                </div>
+
+                <div className="flex items-center h-full w-full overflow-hidden">
+                  <TypingParagraph
+                    text={text}
+                    index={index}
+                    wrongIndexes={wrongIndexes}
+                  />
+                </div>
+
+                {/* InScript Reference Panel */}
+                {(practiceMode === "hindi" || practiceMode === "marathi") && (
+                  <details className="absolute bottom-3 right-4 text-xs text-white/50 text-right">
+                    <summary className="cursor-pointer text-white/70 hover:text-white transition">
+                      ⌨ InScript Layout
+                    </summary>
+
+                    <div className="mt-2 space-y-1 font-mono bg-slate-800/80 backdrop-blur px-3 py-2 rounded-lg border border-slate-700">
+                      <div>K → क</div>
+                      <div>Shift + K → ख</div>
+                      <div>/ → ् (Halant)</div>
+                      <div>D + / + R → द्र</div>
+                    </div>
+                  </details>
+                )}
+              </div>
+              <div className="sticky bottom-0 z-40 bg-[#0b1220] pt-3 pb-4">
+                {" "}
+                <Keyboard
+                  expectedKey={graphemes[index]}
+                  lastCorrect={derivedLastCorrect}
                 />
               </div>
-
-              {/* InScript Reference Panel */}
-              {(practiceMode === "hindi" || practiceMode === "marathi") && (
-                <details className="absolute bottom-3 right-4 text-xs text-white/50 text-right">
-                  <summary className="cursor-pointer text-white/70 hover:text-white transition">
-                    ⌨ InScript Layout
-                  </summary>
-
-                  <div className="mt-2 space-y-1 font-mono bg-slate-800/80 backdrop-blur px-3 py-2 rounded-lg border border-slate-700">
-                    <div>K → क</div>
-                    <div>Shift + K → ख</div>
-                    <div>/ → ् (Halant)</div>
-                    <div>D + / + R → द्र</div>
-                  </div>
-                </details>
-              )}
-            </div>
-            <div className="scale-[0.85] sm:scale-100 origin-top">
-              <Keyboard
-                expectedKey={graphemes[index]}
-                lastCorrect={derivedLastCorrect}
-              />
             </div>
           </div>
 
           {/* <ErrorBar errors={errors} /> */}
         </div>
       </div>
-    </PageMotion>
+    </>
   );
 }
 
@@ -520,7 +528,7 @@ function Stat({
       <span className="text-slate-400 text-xs uppercase tracking-widest">
         {label}
       </span>
-      <span className={`text-2xl sm:text-4xl font-black ${color}`}>
+      <span className={`text-2xl sm:text-4xl font-black ${color} tabular-nums`}>
         {value}
       </span>
     </div>

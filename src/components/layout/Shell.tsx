@@ -10,7 +10,6 @@ import StreakFlame from "@/components/StreakFlame";
 import { signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import InstallButton from "@/components/InstallButton";
-import InstallPrompt from "@/components/InstallPrompt";
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -33,6 +32,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setMounted(true);
   }, []);
+  
 
   if (!mounted) return null;
 
@@ -130,23 +130,35 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <div className="sm:hidden border-b border-white/10 bg-[#0b1220]/80 backdrop-blur">
         <NavTabs />
       </div>
-      
-      <InstallPrompt />
-      <main className="flex-1 flex flex-col">{children}</main>
-      <footer className="border-t border-white/10 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs sm:text-sm text-white/50">
-          {/* LEFT */}
-          <div>© {new Date().getFullYear()} TypingON</div>
 
-          {/* RIGHT LINKS */}
-          <div className="flex gap-4 sm:gap-6">
-            <Link href="/privacy" className="hover:text-white transition">
+      <main className="flex-1 pb-10 sm:pb-12">
+        {children}
+      </main>
+      <footer className="fixed bottom-3 right-4 z-50 text-xs text-white/40">
+        <div className="flex items-center gap-3 bg-[#0b1220]/80 backdrop-blur px-3 py-1.5 rounded-md border border-white/10 shadow-md">
+          <span className="hidden sm:inline">
+            © {new Date().getFullYear()} TypingON
+          </span>
+
+          <div className="flex items-center gap-2">
+            <Link
+              href="/privacy"
+              className="hover:text-white opacity-70 hover:opacity-100 transition"
+            >
               Privacy
             </Link>
-            <Link href="/terms" className="hover:text-white transition">
+            <span className="opacity-40">·</span>
+            <Link
+              href="/terms"
+              className="hover:text-white opacity-70 hover:opacity-100 transition"
+            >
               Terms
             </Link>
-            <Link href="/contact" className="hover:text-white transition">
+            <span className="opacity-40">·</span>
+            <Link
+              href="/contact"
+              className="hover:text-white opacity-70 hover:opacity-100 transition"
+            >
               Contact
             </Link>
           </div>

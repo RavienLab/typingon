@@ -3,6 +3,7 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import ResultScreen from "@/components/typing/ResultScreen";
+import { useTypingStore } from "@/store/typingStore";
 
 export default function ResultClient() {
   const params = useSearchParams();
@@ -11,6 +12,9 @@ export default function ResultClient() {
   const id = params.get("id");
 
   const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  const lastResult = useTypingStore((s) => s.lastResult);
 
   useEffect(() => {
     if (!id) {
@@ -18,27 +22,73 @@ export default function ResultClient() {
       return;
     }
 
+    let cancelled = false;
+
     fetch(`/api/v1/typing/session/${id}`)
       .then((res) => {
         if (!res.ok) throw new Error("Failed");
         return res.json();
       })
-      .then(setData)
-      .catch(() => {
-        router.replace("/test");
+      .then((res) => {
+        if (!cancelled) {
+          setData(res);
+        }
+      })
+      .catch((err) => {
+        console.error("Result fetch failed:", err);
+        // ❌ no redirect — fallback will handle UI
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
       });
-  }, [id]);
 
-  if (!data) return null;
+    return () => {
+      cancelled = true;
+    };
+  }, [id, router]);
 
+  /* ---------------- PRIORITY 1: SERVER DATA ---------------- */
+  if (data) {
+    return (
+      <ResultScreen
+        stats={data.stats}
+        practiceMode={data.practiceMode}
+        paragraph={data.paragraph}
+        ghostReplay={data.keystrokes?.map((k: any) => ({ time: k.time })) || []}
+        onRetry={() => {
+          useTypingStore.getState().reset();
+          router.replace("/test");
+        }}
+        onNext={() => {
+          useTypingStore.getState().reset();
+          router.replace("/test");
+        }}
+      />
+    );
+  }
+
+  /* ---------------- PRIORITY 2: LOCAL FALLBACK ---------------- */
+  if (lastResult) {
+    return (
+      <ResultScreen
+        stats={lastResult.stats}
+        practiceMode={lastResult.practiceMode}
+        paragraph={lastResult.paragraph}
+        ghostReplay={lastResult.keystrokes.map((k) => ({ time: k.time }))}
+        onRetry={() => {
+          useTypingStore.getState().reset();
+          router.replace("/test");
+        }}
+        onNext={() => {
+          useTypingStore.getState().reset();
+          router.replace("/test");
+        }}
+      />
+    );
+  }
+
+  /* ---------------- PRIORITY 3: LOADING ---------------- */
   return (
-    <ResultScreen
-      stats={data.stats}
-      practiceMode={data.practiceMode}
-      paragraph={data.paragraph}
-      ghostReplay={data.keystrokes?.map((k: any) => ({ time: k.time })) || []}
-      onRetry={() => router.replace("/test")}
-      onNext={() => router.replace("/test")}
-    />
+    <div className="text-center mt-10 text-white/50">Loading result...</div>
   );
 }

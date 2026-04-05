@@ -3,7 +3,7 @@
 import { Shell } from "@/components/layout/Shell";
 import { ParagraphProvider } from "@/components/typing/ParagraphProvider";
 import { usePathname } from "next/navigation";
-
+ 
 export default function ShellLayout({
   children,
 }: {
