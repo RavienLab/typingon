@@ -111,6 +111,8 @@ export default function TypingTest() {
   const [showExamNotice, setShowExamNotice] = useState(false);
   const router = useRouter();
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const isNavigating = useTypingStore((s) => s.isNavigating);
+  const setNavigating = useTypingStore((s) => s.setNavigating);
 
   /* ---------- START TEST + CREATE ATTEMPT ---------- */
 
@@ -120,47 +122,40 @@ export default function TypingTest() {
 
   useEffect(() => {
     if (!paragraph?.text) return;
-    if (text !== paragraph.text) {
-      // 🔥 immediately clear old state BEFORE anything
 
-      hasSubmittedRef.current = false;
-      setPaused(false);
+    // 🔥 prevent duplicate execution
+    if (text === paragraph.text) return;
 
-      // now load new paragraph
-      startTest(paragraph.text);
+    // ✅ reset FIRST
+    hasSubmittedRef.current = false;
+    setPaused(false);
 
-      timerStartRef.current = null;
-      setStarted(false);
-      setDisplayElapsedMs(0);
+    timerStartRef.current = null;
+    setStarted(false);
+    setDisplayElapsedMs(0);
 
-      sessionCreatedRef.current = false;
-      setSessionId(null);
+    sessionCreatedRef.current = false;
+    setSessionId(null);
 
-      // 🔥 CREATE SESSION EARLY (NO RACE CONDITION)
-      if (!sessionCreatedRef.current) {
-        sessionCreatedRef.current = true;
+    // ✅ start test AFTER reset
+    startTest(paragraph.text);
 
-        fetch("/api/v1/typing/start", {
-          method: "POST",
-        })
-          .then(async (res) => {
-            if (!res.ok) {
-              const err = await res.json().catch(() => ({}));
-              console.error("SESSION ERROR:", err);
+    // 🔥 create session immediately
+    sessionCreatedRef.current = true;
 
-              sessionCreatedRef.current = false; // allow retry
-              return;
-            }
-
-            const data = await res.json();
-            setSessionId(data.sessionId);
-          })
-          .catch(() => {
-            sessionCreatedRef.current = false;
-          });
-      }
-    }
-  }, [paragraph.text, paragraph.id]);
+    fetch("/api/v1/typing/start", { method: "POST" })
+      .then(async (res) => {
+        if (!res.ok) {
+          sessionCreatedRef.current = false;
+          return;
+        }
+        const data = await res.json();
+        setSessionId(data.sessionId);
+      })
+      .catch(() => {
+        sessionCreatedRef.current = false;
+      });
+  }, [paragraph.text]);
 
   useEffect(() => {
     try {
@@ -290,10 +285,11 @@ export default function TypingTest() {
   }, [text, index, keystrokes, paused, finished]);
 
   useEffect(() => {
-    if (!finished) return;
-    if (hasSubmittedRef.current) return;
+    if (!finished || hasSubmittedRef.current) return;
 
     hasSubmittedRef.current = true;
+
+    const currentSessionId = sessionId;
 
     queueMicrotask(() => {
       const stats = liveStats;
@@ -311,74 +307,39 @@ export default function TypingTest() {
         keystrokes,
       };
 
-      // ✅ ALWAYS store result first (prevents blank screen)
       useTypingStore.getState().setLastResult(payload);
 
-      // ⚠️ If too short, skip backend but STILL show result
-      if (stats.elapsedMs < 5000) {
-        console.warn("Test too short — skipping submit");
+      // 🔥 LOCK RIGHT BEFORE NAVIGATION (NOT BEFORE)
+      setNavigating(true);
 
-        if (sessionId) {
-          router.push(`/test/result?id=${sessionId}`);
+      if (stats.elapsedMs < 5000) {
+        if (currentSessionId) {
+          router.push(`/test/result?id=${currentSessionId}`);
         } else {
           router.push(`/test/result`);
         }
         return;
       }
 
-      try {
-        if (sessionId && session?.user?.id) {
-          saveResultMutation.mutate(
-            {
-              sessionId,
-              keystrokes: keystrokes.map((k) => ({
-                key: k.key,
-                time: k.time,
-                correct: k.correct,
-              })),
-              wpmTimeline: [],
-              backspaces: keystrokes.filter((k) => k.key === "Backspace")
-                .length,
+      if (currentSessionId && session?.user?.id) {
+        saveResultMutation.mutate(
+          {
+            sessionId,
+            keystrokes,
+            wpmTimeline: [],
+            backspaces: keystrokes.filter((k) => k.key === "Backspace").length,
+          },
+          {
+            onSuccess: () => {
+              router.push(`/test/result?id=${currentSessionId}`);
             },
-            {
-              onSuccess: () => {
-                if (sessionId) {
-                  router.push(`/test/result?id=${sessionId}`);
-                } else {
-                  router.push(`/test/result`);
-                }
-              },
-              onError: (err) => {
-                console.error("Save failed:", err);
-
-                // ✅ STILL go to result (fallback will show)
-                if (sessionId) {
-                  router.push(`/test/result?id=${sessionId}`);
-                } else {
-                  router.push(`/test/result`);
-                }
-              },
+            onError: () => {
+              router.push(`/test/result?id=${currentSessionId}`);
             },
-          );
-        } else {
-          console.warn("Missing sessionId or userId");
-
-          // ✅ allow guest result view
-          if (sessionId) {
-            router.push(`/test/result?id=${sessionId}`);
-          } else {
-            router.push(`/test/result`);
-          }
-        }
-      } catch (e) {
-        console.error("Unexpected error:", e);
-
-        // ✅ never block result screen
-        if (sessionId) {
-          router.push(`/test/result?id=${sessionId}`);
-        } else {
-          router.push(`/test/result`);
-        }
+          },
+        );
+      } else {
+        router.push(`/test/result?id=${currentSessionId}`);
       }
     });
   }, [finished]);
@@ -397,6 +358,9 @@ export default function TypingTest() {
   }, [keystrokes]);
 
   const graphemes = useMemo(() => Array.from(text), [text]);
+  if (isNavigating) {
+    return <div className="h-screen w-full bg-[#0b1220]" />;
+  }
 
   return (
     <>

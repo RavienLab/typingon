@@ -119,29 +119,25 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Too short" }, { status: 400 });
   }
 
-  let result: any;
+  // ✅ NO LONG TRANSACTION — keep it simple
+  await prisma.typingSession.update({
+    where: { id: sessionId },
+    data: { endedAt: new Date() },
+  });
 
-  await prisma.$transaction(async (tx) => {
-    // ✅ only critical operations
-    await tx.typingSession.update({
-      where: { id: sessionId },
-      data: { endedAt: new Date() },
-    });
-
-    result = await tx.typingResult.create({
-      data: {
-        sessionId,
-        userId,
-        wpm: stats.wpm,
-        rawWpm: stats.rawWpm,
-        accuracy: stats.accuracy,
-        practiceMode: typingSession.textType,
-        errors: keystrokes.filter((k: any) => !k.correct).length,
-        backspaces,
-        keystrokes,
-        wpmTimeline,
-      },
-    });
+  const result = await prisma.typingResult.create({
+    data: {
+      sessionId,
+      userId,
+      wpm: stats.wpm,
+      rawWpm: stats.rawWpm,
+      accuracy: stats.accuracy,
+      practiceMode: typingSession.textType,
+      errors: keystrokes.filter((k: any) => !k.correct).length,
+      backspaces,
+      keystrokes,
+      wpmTimeline,
+    },
   });
 
   // 🔥 NON-CRITICAL (outside transaction)

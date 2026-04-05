@@ -44,12 +44,14 @@ type TypingState = {
 
   // RESULT
   lastResult: TypingResult | null;
+  isNavigating: boolean;
 
   startTest: (text: string) => void;
   restartTest: () => void;
   input: (key: string) => void;
   setFocused: (v: boolean) => void;
   setLastResult: (r: TypingResult) => void;
+  setNavigating: (v: boolean) => void;
   reset: () => void;
 };
 
@@ -65,7 +67,7 @@ const IGNORED_KEYS = new Set([
   "Tab",
   "Escape",
   "ArrowUp",
-  "ArrowDown", 
+  "ArrowDown",
   "ArrowLeft",
   "ArrowRight",
 ]);
@@ -95,6 +97,8 @@ export const useTypingStore = create<TypingState>((set, get) => ({
   lastCorrect: null,
 
   lastResult: null,
+  isNavigating: false,
+  setNavigating: (v) => set({ isNavigating: v }),
 
   /* ---------- START TEST ---------- */
   startTest: (text) =>

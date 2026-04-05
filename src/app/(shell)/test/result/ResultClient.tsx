@@ -16,6 +16,8 @@ export default function ResultClient() {
 
   const lastResult = useTypingStore((s) => s.lastResult);
 
+  const setNavigating = useTypingStore((s) => s.setNavigating);
+
   useEffect(() => {
     if (!id) {
       router.replace("/test");
@@ -46,6 +48,20 @@ export default function ResultClient() {
       cancelled = true;
     };
   }, [id, router]);
+
+  useEffect(() => {
+    // 🔥 UNLOCK UI when result page loads
+    setNavigating(false);
+
+    return () => {
+      // 🔥 safety unlock (important for fast navigation)
+      setNavigating(false);
+    };
+  }, []);
+
+  useEffect(() => {
+    setNavigating(false);
+  }, []);
 
   /* ---------------- PRIORITY: ALWAYS SHOW LAST RESULT FIRST ---------------- */
   if (lastResult) {
