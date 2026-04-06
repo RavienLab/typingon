@@ -31,41 +31,26 @@ const ENGLISH: Record<Length, Paragraph[]> = {
   short: [
     {
       id: "en-short-1",
-      text: "The quick brown fox jumps over the lazy dog.",
-      difficulty: "easy",
-    },
-    {
-      id: "en-short-2",
-      text: "Accuracy creates confidence.",
-      difficulty: "easy",
-    },
-    {
-      id: "en-short-3",
-      text: "Slow is smooth and smooth is fast.",
-      difficulty: "easy",
+      text: "The art of programming is the art of organizing complexity, of mastering a multitude of intricate details, and of defining abstractions that remain valid across different contexts.",
+      difficulty: "medium",
     },
   ],
   medium: [
     {
       id: "en-medium-1",
-      text: "Typing is not about speed alone, but about rhythm and focus.",
+      text: "Software engineering is more than just writing code; it is a discipline of problem-solving and architectural design. Great developers focus on readability, maintainability, and the long-term impact of their technical decisions on the overall system health.",
       difficulty: "medium",
     },
     {
       id: "en-medium-2",
-      text: "Programming rewards patience and clarity.",
-      difficulty: "medium",
-    },
-    {
-      id: "en-medium-3",
-      text: "Consistency builds mastery over time.",
+      text: "In the world of startups, speed is often prioritized over perfection. However, the most successful products are those that manage to balance rapid iteration with a solid foundational architecture that can scale as the user base grows exponentially.",
       difficulty: "medium",
     },
   ],
   long: [
     {
       id: "en-long-1",
-      text: "Focus is fragile in a noisy world. A good typing session feels like silence even when keys move quickly.",
+      text: "Persistence is the most vital trait for any engineer. Building a production-level application requires hours of debugging, deep-diving into documentation, and the willingness to rewrite entire modules to achieve the desired performance. It is a marathon of focus where the reward is a seamless user experience and a robust, reliable product that stands the test of time and scale.",
       difficulty: "hard",
     },
   ],
@@ -190,7 +175,7 @@ export function ParagraphProvider({ children }: { children: ReactNode }) {
     setPracticeModeState(m);
     localStorage.setItem("practiceMode", m);
     setIndex((i) => i + 1);
-  }; 
+  };
 
   const setLength = (l: Length) => {
     setLengthState(l);

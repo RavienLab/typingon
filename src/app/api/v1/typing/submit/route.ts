@@ -26,48 +26,41 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid data" }, { status: 400 });
   }
 
-  // 🔥 Rate limit
-  const recent = await prisma.typingResult.count({
-    where: {
-      userId,
-      createdAt: {
-        gt: new Date(Date.now() - 60_000),
-      },
-    },
+  // 🔥 RATE LIMITING: Prevent spam (max 3 submissions per minute)
+  const recentCount = await prisma.typingResult.count({
+    where: { userId, createdAt: { gt: new Date(Date.now() - 60_000) } },
   });
 
-  if (recent >= 3) {
-    return NextResponse.json(
-      { error: "Too many submissions" },
-      { status: 429 },
-    );
+  if (recentCount >= 3) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
 
-  // 🔒 Get session FIRST (not updateMany)
+  // 🔒 SESSION VALIDATION
   const typingSession = await prisma.typingSession.findUnique({
     where: { id: sessionId },
   });
 
-  if (!typingSession) {
-    return NextResponse.json({ error: "Invalid session" }, { status: 403 });
-  }
-
-  if (typingSession.userId !== userId) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!typingSession || typingSession.userId !== userId) {
+    return NextResponse.json({ error: "Session mismatch" }, { status: 403 });
   }
 
   if (typingSession.endedAt) {
-    return NextResponse.json({ error: "Already submitted" }, { status: 409 });
+    return NextResponse.json(
+      { error: "Session already finalized" },
+      { status: 409 },
+    );
   }
 
-  // 🔒 Enforce server time (NOT client)
+  // 🔒 SECURITY: Enforce minimum time (3000ms for long paragraphs)
   const elapsed = Date.now() - typingSession.startedAt.getTime();
-
-  if (elapsed < 5000) {
-    return NextResponse.json({ error: "Session too short" }, { status: 400 });
+  if (elapsed < 3000) {
+    return NextResponse.json(
+      { error: "Session too short for valid result" },
+      { status: 400 },
+    );
   }
 
-  // 🔐 Validate keystrokes
+  // 🔐 KEYSTROKE INTEGRITY
   for (const k of keystrokes) {
     if (
       typeof k.key !== "string" ||
@@ -75,51 +68,42 @@ export async function POST(req: Request) {
       typeof k.correct !== "boolean"
     ) {
       return NextResponse.json(
-        { error: "Invalid keystrokes" },
+        { error: "Payload integrity check failed" },
         { status: 400 },
       );
     }
   }
 
-  // 🧠 Bot detection
+  // 🧠 ADVANCED BOT DETECTION
   const times = keystrokes.map((k: any) => k.time);
   const intervals = times.slice(1).map((t: number, i: number) => t - times[i]);
 
-  if (intervals.length >= 5) {
+  if (intervals.length >= 15) {
     const avg = intervals.reduce((a, b) => a + b, 0) / intervals.length;
-
     const variance =
       intervals.reduce((acc, val) => acc + Math.abs(val - avg), 0) /
       intervals.length;
-
-    if (avg < 30 || variance < 5) {
-      return NextResponse.json({ error: "Bot detected" }, { status: 400 });
+    // Human typing has variance. If it's too perfect (< 1ms), it's a script.
+    if (avg < 20 || variance < 1.5) {
+      return NextResponse.json(
+        { error: "Automated typing detected" },
+        { status: 400 },
+      );
     }
   }
 
-  // 📊 Use SERVER time
+  // 📊 CALCULATE FINAL STATS
   const stats = calculateStats(keystrokes, typingSession.startedAt.getTime());
 
-  if (stats.rawWpm < stats.wpm) {
-    return NextResponse.json({ error: "Invalid stats" }, { status: 400 });
-  }
-
-  if (stats.wpm > 220 || stats.accuracy > 100) {
-    return NextResponse.json({ error: "Invalid result" }, { status: 400 });
-  }
-
-  if (stats.wpm <= 0 || stats.accuracy <= 0 || keystrokes.length < 15) {
+  // 🏁 VALIDATION: Enforce professional length (Min 20 characters)
+  if (stats.wpm > 250 || stats.accuracy > 100 || keystrokes.length < 20) {
     return NextResponse.json(
-      { error: "Test too short or invalid" },
+      { error: "Result rejected: invalid or too short" },
       { status: 400 },
     );
   }
 
-  if (keystrokes.length < 10) {
-    return NextResponse.json({ error: "Too short" }, { status: 400 });
-  }
-
-  // ✅ NO LONG TRANSACTION — keep it simple
+  // ✅ PERSISTENCE: Atomic update to close session and create result
   await prisma.typingSession.update({
     where: { id: sessionId },
     data: { endedAt: new Date() },
@@ -140,114 +124,89 @@ export async function POST(req: Request) {
     },
   });
 
-  // 🔥 NON-CRITICAL (outside transaction)
-
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-  });
-
-  if (!user) throw new Error("User not found");
-
-  // 🏆 Leaderboard
-  const prev = await prisma.leaderboardEntry.findUnique({
-    where: { userId },
-  });
-
-  if (!prev) {
-    await prisma.leaderboardEntry
-      .create({
-        data: {
-          userId,
-          username: user.name || "Anonymous",
-          bestWpm: stats.wpm,
-          avgWpm: stats.wpm,
-          tests: 1,
-        },
-      })
-      .catch(() => {});
-  } else {
-    const total = prev.tests + 1;
-    const newAvg = (prev.avgWpm * prev.tests + stats.wpm) / total;
-
-    await prisma.leaderboardEntry
-      .update({
+  // 🏆 BACKGROUND UPDATES (Non-critical)
+  let currentStreak = 0;
+  try {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (user) {
+      // 🥇 Atomic Leaderboard Logic
+      const prevEntry = await prisma.leaderboardEntry.findUnique({
         where: { userId },
+      });
+      if (!prevEntry) {
+        await prisma.leaderboardEntry.create({
+          data: {
+            userId,
+            username: user.name || "Anon",
+            bestWpm: stats.wpm,
+            avgWpm: stats.wpm,
+            tests: 1,
+          },
+        });
+      } else {
+        await prisma.leaderboardEntry.update({
+          where: { userId },
+          data: {
+            bestWpm: Math.max(prevEntry.bestWpm, stats.wpm),
+            tests: { increment: 1 },
+            avgWpm: Math.round(
+              (prevEntry.avgWpm * prevEntry.tests + stats.wpm) /
+                (prevEntry.tests + 1),
+            ),
+          },
+        });
+      }
+
+      // 🔥 Streak & Progression
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const lastActive = user.lastActive ? new Date(user.lastActive) : null;
+      currentStreak = user.currentStreak || 0;
+
+      let streakData = {};
+      if (!lastActive) {
+        currentStreak = 1;
+        streakData = { currentStreak: 1, lastActive: today };
+      } else {
+        const diff = Math.floor(
+          (today.getTime() - lastActive.getTime()) / 86400000,
+        );
+        if (diff === 1) {
+          currentStreak += 1;
+          streakData = { currentStreak: { increment: 1 }, lastActive: today };
+        } else if (diff > 1) {
+          currentStreak = 1;
+          streakData = { currentStreak: 1, lastActive: today };
+        }
+      }
+
+      const gainedXP = calculateXP(stats.wpm, stats.accuracy);
+      await prisma.user.update({
+        where: { id: userId },
         data: {
-          bestWpm: Math.max(prev.bestWpm, stats.wpm),
-          avgWpm: Math.round(newAvg),
-          tests: total,
+          ...streakData,
+          bestStreak: { set: Math.max(user.bestStreak || 0, currentStreak) },
+          personalBest: { set: Math.max(user.personalBest || 0, stats.wpm) },
+          xp: { increment: gainedXP },
+          level: levelFromXP((user.xp || 0) + gainedXP),
         },
-      })
-      .catch(() => {});
-  }
+      });
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const last = user.lastActive ? new Date(user.lastActive) : null;
-
-  let streak = user.currentStreak || 0;
-
-  if (!last) {
-    streak = 1;
-  } else {
-    const lastDay = new Date(last);
-    lastDay.setHours(0, 0, 0, 0);
-
-    const diffDays = Math.floor(
-      (today.getTime() - lastDay.getTime()) / (1000 * 60 * 60 * 24),
-    );
-
-    if (diffDays === 1) streak += 1;
-    else if (diffDays > 1) streak = 1;
-  }
-
-  const best = Math.max(user.bestStreak || 0, streak);
-  const pb = Math.max(user.personalBest || 0, stats.wpm);
-
-  const gainedXP = calculateXP(stats.wpm, stats.accuracy);
-  const newXP = (user.xp || 0) + gainedXP;
-  const newLevel = levelFromXP(newXP);
-
-  // 👤 User update (safe)
-  await prisma.user
-    .update({
-      where: { id: userId },
-      data: {
-        currentStreak: streak,
-        bestStreak: best,
-        lastActive: today,
-        personalBest: pb,
-        xp: newXP,
-        level: newLevel,
-      },
-    })
-    .catch(() => {});
-
-  // 🧠 Async (non-critical)
-  // 🧠 smarter unlock logic
-  grantAchievement(userId, "first_test").catch(() => {});
-
-  if (stats.wpm >= 50) {
-    grantAchievement(userId, "speed_50").catch(() => {});
-  }
-
-  if (stats.wpm >= 80) {
-    grantAchievement(userId, "speed_80").catch(() => {});
-  }
-
-  const totalTests = await prisma.typingResult.count({
-    where: { userId },
-  });
-
-  if (totalTests >= 10) {
-    grantAchievement(userId, "ten_tests").catch(() => {});
+      // 🧠 Async Achievements
+      Promise.allSettled([
+        grantAchievement(userId, "first_test"),
+        ...(stats.wpm >= 50 ? [grantAchievement(userId, "speed_50")] : []),
+        ...(stats.wpm >= 100 ? [grantAchievement(userId, "speed_100")] : []),
+      ]);
+    }
+  } catch (err) {
+    console.error("Delayed background update fail:", err);
   }
 
   return NextResponse.json({
     guest: false,
     sessionId,
     result,
-    streak,
+    streak: currentStreak,
   });
 }

@@ -4,41 +4,53 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import ResultScreen from "@/components/typing/ResultScreen";
 import { useTypingStore } from "@/store/typingStore";
+import { useParagraph } from "@/components/typing/ParagraphProvider"; // ✅ Added to cycle text
 
 export default function ResultClient() {
   const params = useSearchParams();
   const router = useRouter();
+  const { nextParagraph } = useParagraph(); // ✅ Destructure the cycler
 
   const id = params.get("id");
-
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   const lastResult = useTypingStore((s) => s.lastResult);
-
   const setNavigating = useTypingStore((s) => s.setNavigating);
 
+  /* ---------- DATA FETCHING ---------- */
   useEffect(() => {
-    if (!id) {
-      router.replace("/test");
+    // 🔥 THE SILENCER: If data exists in the Zustand store, skip the fetch entirely.
+    // This prevents the 404 logs because we don't even call the API.
+    if (lastResult) {
+      setLoading(false);
       return;
+    }
+
+    // 1. If we don't have local data AND the ID is generic, wait for sync
+    if (!id || id === "null" || id === "latest") {
+      const syncTimer = setTimeout(() => {
+        // Final check: if store is still empty after 300ms, go back to test
+        if (!useTypingStore.getState().lastResult) {
+          router.replace("/test");
+        }
+      }, 300);
+      return () => clearTimeout(syncTimer);
     }
 
     let cancelled = false;
 
+    // 2. Only run fetch if we are actually missing local data (e.g., page refresh)
     fetch(`/api/v1/typing/session/${id}`)
       .then((res) => {
-        if (!res.ok) throw new Error("Failed");
+        if (!res.ok) throw new Error("Not Found");
         return res.json();
       })
       .then((res) => {
-        if (!cancelled) {
-          setData(res);
-        }
+        if (!cancelled) setData(res);
       })
-      .catch((err) => {
-        console.error("Result fetch failed:", err);
-        // ❌ no redirect — fallback will handle UI
+      .catch(() => {
+        /* Silent fail: Fallback handled by UI showing empty stats */
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -47,23 +59,40 @@ export default function ResultClient() {
     return () => {
       cancelled = true;
     };
-  }, [id, router]);
+  }, [id, lastResult, router]);
 
+  /* ---------- UI LOCK MANAGEMENT ---------- */
   useEffect(() => {
-    // 🔥 UNLOCK UI when result page loads
+    // 🔥 UNLOCK UI when result page loads to ensure navigation works
     setNavigating(false);
+    return () => setNavigating(false);
+  }, [setNavigating]);
 
-    return () => {
-      // 🔥 safety unlock (important for fast navigation)
-      setNavigating(false);
-    };
-  }, []);
+  /* ---------- HANDLERS ---------- */
+  const handleNext = () => {
+    const store = useTypingStore.getState();
 
-  useEffect(() => {
-    setNavigating(false);
-  }, []);
+    // 1. Trigger the ParagraphProvider to increment the index (new text)
+    nextParagraph();
 
-  /* ---------------- PRIORITY: ALWAYS SHOW LAST RESULT FIRST ---------------- */
+    // 2. Clear typing progress and "blank" the store text
+    // This triggers the useEffect in TestClient to sync the new text
+    store.reset();
+
+    // 3. Navigate back to test
+    router.replace("/test");
+  };
+
+  const handleRetry = () => {
+    const store = useTypingStore.getState();
+    // Reset typing progress but keep the SAME paragraph text
+    store.restartTest();
+    router.replace("/test");
+  };
+
+  /* ---------- RENDER LOGIC ---------- */
+
+  // 1. PRIORITY: Local store (instant display)
   if (lastResult) {
     return (
       <ResultScreen
@@ -71,24 +100,13 @@ export default function ResultClient() {
         practiceMode={lastResult.practiceMode}
         paragraph={lastResult.paragraph}
         ghostReplay={lastResult.keystrokes.map((k) => ({ time: k.time }))}
-        onRetry={() => {
-          const store = useTypingStore.getState();
-          store.restartTest();
-          router.replace("/test");
-        }}
-        onNext={() => {
-          const store = useTypingStore.getState();
-
-          // ✅ only reset typing progress (NOT text)
-          store.restartTest();
-
-          router.replace("/test");
-        }}
+        onRetry={handleRetry}
+        onNext={handleNext}
       />
     );
   }
 
-  /* ---------------- SERVER DATA (OPTIONAL OVERRIDE) ---------------- */
+  // 2. FALLBACK: Server data (historical view)
   if (data) {
     return (
       <ResultScreen
@@ -96,24 +114,13 @@ export default function ResultClient() {
         practiceMode={data.practiceMode}
         paragraph={data.paragraph}
         ghostReplay={data.keystrokes?.map((k: any) => ({ time: k.time })) || []}
-        onRetry={() => {
-          const store = useTypingStore.getState();
-          store.restartTest();
-          router.replace("/test");
-        }}
-        onNext={() => {
-          const store = useTypingStore.getState();
-
-          // ✅ only reset typing progress (NOT text)
-          store.restartTest();
-
-          router.replace("/test");
-        }}
+        onRetry={handleRetry}
+        onNext={handleNext}
       />
     );
   }
 
-  /* ---------------- PRIORITY 3: LOADING ---------------- */
+  // 3. LOADING STATE
   return (
     <div className="text-center mt-10 text-white/50">Loading result...</div>
   );

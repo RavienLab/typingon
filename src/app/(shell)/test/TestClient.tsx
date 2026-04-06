@@ -74,7 +74,6 @@ export default function TypingTest() {
     errors,
     keystrokes,
     finished,
-
     startTest,
     input,
     setFocused,
@@ -98,15 +97,12 @@ export default function TypingTest() {
       timerStartRef.current = Date.now();
     }
   };
-  const [started, setStarted] = useState(false);
-  const examId = null;
   const { paragraph, practiceMode, setPracticeMode } = useParagraph();
 
   const [paused, setPaused] = useState(false);
-  // 🔵 Keystroke chunk batching
 
   const hasSubmittedRef = useRef(false);
-  const sessionCreatedRef = useRef(false);
+  const isCreatingSession = useRef(false);
 
   const [showExamNotice, setShowExamNotice] = useState(false);
   const router = useRouter();
@@ -114,53 +110,33 @@ export default function TypingTest() {
   const isNavigating = useTypingStore((s) => s.isNavigating);
   const setNavigating = useTypingStore((s) => s.setNavigating);
 
-  /* ---------- START TEST + CREATE ATTEMPT ---------- */
+  /* ---------- SYNC & INITIALIZATION ---------- */
 
   useEffect(() => {
     router.prefetch("/test/result");
-  }, []);
+  }, [router]);
 
+  // ✅ SYNC PARAGRAPH: Load text from Provider into the Engine
   useEffect(() => {
     if (!paragraph?.text) return;
 
-    // 🔥 prevent duplicate execution
+    // Prevent re-syncing if text is already correctly loaded
     if (text === paragraph.text) return;
 
-    // ✅ reset FIRST
+    // Reset local test state
     hasSubmittedRef.current = false;
     setPaused(false);
-
     timerStartRef.current = null;
-    setStarted(false);
     setDisplayElapsedMs(0);
-
-    sessionCreatedRef.current = false;
     setSessionId(null);
 
-    // ✅ start test AFTER reset
+    // Sync to store
     startTest(paragraph.text);
-
-    // 🔥 create session immediately
-    sessionCreatedRef.current = true;
-
-    fetch("/api/v1/typing/start", { method: "POST" })
-      .then(async (res) => {
-        if (!res.ok) {
-          sessionCreatedRef.current = false;
-          return;
-        }
-        const data = await res.json();
-        setSessionId(data.sessionId);
-      })
-      .catch(() => {
-        sessionCreatedRef.current = false;
-      });
-  }, [paragraph.text]);
+  }, [paragraph.text, text, startTest]);
 
   useEffect(() => {
     try {
       const seen = localStorage.getItem("inscript_exam_notice_seen");
-
       if (!seen && (practiceMode === "hindi" || practiceMode === "marathi")) {
         setShowExamNotice(true);
       } else {
@@ -169,7 +145,7 @@ export default function TypingTest() {
     } catch {}
   }, [practiceMode]);
 
-  /* ---------- INSCRIPT EXAM INPUT ---------- */
+  /* ---------- INPUT HANDLING ---------- */
   const stateRef = useRef({
     text,
     index,
@@ -190,10 +166,30 @@ export default function TypingTest() {
         return;
       }
 
-      if (e.ctrlKey || e.altKey || e.metaKey) return;
-      if (paused) return;
+      if (e.ctrlKey || e.altKey || e.metaKey || paused) return;
 
-      // ✅ CREATE SESSION ONLY ON FIRST KEYSTROKE
+      // 🔥 SESSION CREATION ON FIRST KEYSTROKE
+      if (index === 0 && !sessionId && !isCreatingSession.current) {
+        isCreatingSession.current = true;
+        fetch("/api/v1/typing/start", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ practiceMode, textType: practiceMode }),
+        })
+          .then((res) => {
+            if (!res.ok) throw new Error("DB Connection Error");
+            return res.json();
+          })
+          .then((data) => {
+            if (data.sessionId) setSessionId(data.sessionId);
+          })
+          .catch((err) => {
+            console.error("Session failed:", err);
+          })
+          .finally(() => {
+            isCreatingSession.current = false;
+          });
+      }
 
       // Hindi / Marathi — InScript Exam
       if (practiceMode === "hindi" || practiceMode === "marathi") {
@@ -201,39 +197,31 @@ export default function TypingTest() {
           e.preventDefault();
           return;
         }
-
         const key = e.shiftKey ? `Shift+${e.code}` : e.code;
         const char = INSCRIPT_MAP[key];
         if (!char) return;
-
         startTimer();
-
         input(char);
-
         return;
       }
 
-      // English / Numbers / Code — Exam Safe
+      // English / Numbers / Code
       if (e.key.length === 1 || e.key === "Backspace" || e.key === "Enter") {
         startTimer();
-
         input(e.key);
       }
     };
 
     window.addEventListener("keydown", onKeyDown, { passive: true });
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [practiceMode, input]);
+  }, [practiceMode, input, sessionId]);
 
   useEffect(() => {
     if (index === 0) return;
-
     const block = (e: ClipboardEvent) => e.preventDefault();
-
     window.addEventListener("copy", block);
     window.addEventListener("paste", block);
     window.addEventListener("cut", block);
-
     return () => {
       window.removeEventListener("copy", block);
       window.removeEventListener("paste", block);
@@ -241,7 +229,7 @@ export default function TypingTest() {
     };
   }, [index]);
 
-  /* ---------- STATS ---------- */
+  /* ---------- STATS ENGINE ---------- */
   const [liveStats, setLiveStats] = useState({
     wpm: 0,
     rawWpm: 0,
@@ -251,12 +239,10 @@ export default function TypingTest() {
 
   useEffect(() => {
     let raf: number;
-
     const loop = () => {
       if (timerStartRef.current && !paused && !finished) {
         const now = Date.now();
         const elapsed = now - timerStartRef.current;
-
         setDisplayElapsedMs(elapsed);
 
         const stats = calculateStats({
@@ -276,22 +262,18 @@ export default function TypingTest() {
           elapsedMs: elapsed,
         }));
       }
-
       raf = requestAnimationFrame(loop);
     };
-
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
   }, [text, index, keystrokes, paused, finished]);
 
+  /* ---------- FINISH LOGIC (OPTIMISTIC) ---------- */
   useEffect(() => {
     if (!finished || hasSubmittedRef.current) return;
 
-    hasSubmittedRef.current = true;
-
-    const currentSessionId = sessionId;
-
-    queueMicrotask(() => {
+    const handleFinish = (currentId: string | null) => {
+      hasSubmittedRef.current = true;
       const stats = liveStats;
 
       const payload = {
@@ -307,53 +289,62 @@ export default function TypingTest() {
         keystrokes,
       };
 
+      // 1. Save results to local memory (Zustand) instantly
       useTypingStore.getState().setLastResult(payload);
 
-      // 🔥 LOCK RIGHT BEFORE NAVIGATION (NOT BEFORE)
-      setNavigating(true);
+      // 2. 🔥 THE SYNC FIX: Increase delay to 100ms to ensure RAM is 100% saved
+      // before the ResultClient mounts. This stops the race condition.
+      setTimeout(() => {
+        setNavigating(true);
+        const finalId = currentId || "latest";
+        router.push(`/test/result?id=${finalId}`);
+      }, 100);
 
-      if (stats.elapsedMs < 5000) {
-        if (currentSessionId) {
-          router.push(`/test/result?id=${currentSessionId}`);
-        } else {
-          router.push(`/test/result`);
+      // 3. Background Sync (1000ms threshold)
+      if (currentId && session?.user?.id && stats.elapsedMs >= 1000) {
+        saveResultMutation.mutate({
+          sessionId: currentId,
+          keystrokes,
+          wpmTimeline: [],
+          backspaces: keystrokes.filter((k) => k.key === "Backspace").length,
+        });
+      }
+    };
+
+    // 🔥 GATING: Wait for the session creation to finish if it's still in flight
+    if (isCreatingSession.current) {
+      const poll = setInterval(() => {
+        if (!isCreatingSession.current) {
+          clearInterval(poll);
+          handleFinish(sessionId);
         }
-        return;
-      }
-
-      if (currentSessionId && session?.user?.id) {
-        saveResultMutation.mutate(
-          {
-            sessionId,
-            keystrokes,
-            wpmTimeline: [],
-            backspaces: keystrokes.filter((k) => k.key === "Backspace").length,
-          },
-          {
-            onSuccess: () => {
-              router.push(`/test/result?id=${currentSessionId}`);
-            },
-            onError: () => {
-              router.push(`/test/result?id=${currentSessionId}`);
-            },
-          },
-        );
-      } else {
-        router.push(`/test/result?id=${currentSessionId}`);
-      }
-    });
-  }, [finished]);
+      }, 100);
+      return () => clearInterval(poll);
+    } else {
+      handleFinish(sessionId);
+    }
+  }, [
+    finished,
+    sessionId,
+    liveStats,
+    practiceMode,
+    text,
+    keystrokes,
+    errors,
+    session,
+    router,
+    setNavigating,
+    saveResultMutation,
+  ]);
 
   const wrongIndexes = useMemo(() => {
     if (!keystrokes.length) return new Set<number>();
     const map = new Set<number>();
     let cursor = 0;
-
     for (const k of keystrokes) {
       if (!k.correct) map.add(cursor);
       cursor++;
     }
-
     return map;
   }, [keystrokes]);
 
@@ -363,29 +354,23 @@ export default function TypingTest() {
   }
 
   return (
-    <>
+    <main className="flex flex-col min-h-screen bg-[#0b1220] overflow-x-hidden">
       {/* LANGUAGE BAR */}
-      <div className="border-b border-slate-800">
+      <div className="border-b border-slate-800 shrink-0">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2 sm:py-3">
           <div className="flex gap-2 sm:gap-3 overflow-x-auto no-scrollbar text-xs uppercase tracking-wider text-white/50">
             {MODES.map(({ label, value, icon: Icon }) => {
               const active = value === practiceMode;
-
               return (
                 <button
                   key={value}
                   disabled={index > 0}
                   onClick={() => setPracticeMode(value)}
                   className={`
-    flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border transition
-    ${
-      active
-        ? "border-blue-500 text-blue-400 bg-blue-500/10"
-        : "border-transparent hover:text-white hover:bg-white/5"
-    }
-    ${index > 0 ? "opacity-40 cursor-not-allowed" : ""}
-
-  `}
+                    flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border transition shrink-0
+                    ${active ? "border-blue-500 text-blue-400 bg-blue-500/10" : "border-transparent hover:text-white hover:bg-white/5"}
+                    ${index > 0 ? "opacity-40 cursor-not-allowed" : ""}
+                  `}
                 >
                   <Icon size={14} />
                   {label}
@@ -396,49 +381,42 @@ export default function TypingTest() {
         </div>
       </div>
 
-      {/* MAIN */}
-      <div className="flex flex-col pt-2 sm:pt-4 h-[calc(100vh-56px)] overflow-hidden">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col h-full">
-          {/* SCROLL AREA */}
-          <div className="flex-1 overflow-y-auto flex flex-col gap-6 pr-1">
-            {/* STATS */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 min-h-[90px]">
-              <Stat
-                label="WPM"
-                value={liveStats.wpm}
-                color="text-emerald-400"
-              />
-              <Stat
-                label="Accuracy"
-                value={`${liveStats.accuracy}%`}
-                color="text-blue-400"
-              />
-              <Stat
-                label="Time"
-                value={(() => {
-                  const seconds = Math.floor(displayElapsedMs / 1000);
-                  const mins = Math.floor(seconds / 60);
-                  const secs = seconds % 60;
-                  return `${mins}:${secs.toString().padStart(2, "0")}`;
-                })()}
-                color="text-amber-400"
-              />
-              <Stat
-                label="Mode"
-                value={
-                  LANGUAGE_LABELS[practiceMode] ?? practiceMode.toUpperCase()
-                }
-              />
-            </div>
+      {/* MAIN CONTENT AREA */}
+      <div className="flex-1 flex flex-col pt-4 sm:pt-6 h-[calc(100vh-64px)] overflow-hidden">
+        <div className="max-w-6xl w-full mx-auto px-4 sm:px-6 flex flex-col h-full gap-6">
+          {/* STATS SECTION */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 shrink-0">
+            <Stat label="WPM" value={liveStats.wpm} color="text-emerald-400" />
+            <Stat
+              label="Accuracy"
+              value={`${liveStats.accuracy}%`}
+              color="text-blue-400"
+            />
+            <Stat
+              label="Time"
+              value={(() => {
+                const seconds = Math.floor(displayElapsedMs / 1000);
+                const mins = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                return `${mins}:${secs.toString().padStart(2, "0")}`;
+              })()}
+              color="text-amber-400"
+            />
+            <Stat
+              label="Mode"
+              value={
+                LANGUAGE_LABELS[practiceMode] ?? practiceMode.toUpperCase()
+              }
+            />
+          </div>
 
+          {/* SCROLLABLE TYPING ZONE */}
+          <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-6 pb-24">
             {showExamNotice && (
-              <div className="mb-4 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-200 text-sm">
+              <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-200 text-sm shrink-0">
                 <div className="font-semibold mb-1">Exam Mode Notice</div>
-                This mode uses the official InScript keyboard layout.
-                <br />
-                Phonetic typing is disabled.
-                <br />
-                Required for government & institutional exams.
+                This mode uses the official InScript keyboard layout. Required
+                for government exams.
                 <button
                   className="block mt-2 text-xs text-amber-300 underline"
                   onClick={() => {
@@ -454,47 +432,58 @@ export default function TypingTest() {
             )}
 
             {/* TYPING CARD */}
-            <div className="flex flex-col gap-2 sm:gap-3">
-              <div className="relative bg-slate-900 rounded-2xl border border-slate-800 h-[160px] sm:h-[180px] overflow-hidden px-4 sm:px-8 py-4 sm:py-6 shadow-2xl cursor-text">
+            <div className="flex flex-col gap-6">
+              <div className="relative bg-slate-900 rounded-[2rem] border border-slate-800 min-h-[260px] sm:min-h-[300px] flex flex-col px-6 sm:px-12 py-12 sm:py-16 shadow-2xl cursor-text transition-all">
+                {/* OVERLAYS & INDICATORS */}
                 {paused && (
-                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 backdrop-blur-sm rounded-2xl">
-                    <div className="text-white/80 text-sm tracking-wide">
-                      Paused — Press Esc to resume
+                  <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-md rounded-[2rem]">
+                    <div className="text-white/90 text-sm font-bold tracking-[0.3em] uppercase bg-slate-800/80 px-8 py-4 rounded-full border border-white/10 shadow-2xl">
+                      Paused
                     </div>
                   </div>
                 )}
 
-                <div className="absolute top-3 left-4 flex items-center gap-2 text-xs text-white/40">
-                  <Activity size={14} className="text-emerald-400" />
-                  Live Typing
+                <div className="absolute top-6 left-8 flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-emerald-400/50 font-black">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Live Session
                 </div>
 
-                <div className="flex items-center h-full w-full overflow-hidden">
-                  <TypingParagraph
-                    text={text}
-                    index={index}
-                    wrongIndexes={wrongIndexes}
-                  />
+                {/* THE TEXT - Centered and Wrapped */}
+                <div className="flex-1 flex items-center justify-center w-full max-w-4xl mx-auto">
+                  <div className="w-full text-xl sm:text-2xl md:text-3xl leading-[1.8] sm:leading- tracking-wide text-left break-words whitespace-pre-wrap">
+                    <TypingParagraph
+                      text={text}
+                      index={index}
+                      wrongIndexes={wrongIndexes}
+                    />
+                  </div>
                 </div>
 
-                {/* InScript Reference Panel */}
+                {/* INSCRIPT GUIDE */}
                 {(practiceMode === "hindi" || practiceMode === "marathi") && (
-                  <details className="absolute bottom-3 right-4 text-xs text-white/50 text-right">
-                    <summary className="cursor-pointer text-white/70 hover:text-white transition">
-                      ⌨ InScript Layout
+                  <details className="absolute bottom-6 right-8 text-xs text-white/20 hover:text-white/40 transition-colors group">
+                    <summary className="list-none cursor-pointer font-medium">
+                      ⌨ Layout Guide
                     </summary>
-
-                    <div className="mt-2 space-y-1 font-mono bg-slate-800/80 backdrop-blur px-3 py-2 rounded-lg border border-slate-700">
-                      <div>K → क</div>
-                      <div>Shift + K → ख</div>
-                      <div>/ → ् (Halant)</div>
-                      <div>D + / + R → द्र</div>
+                    <div className="absolute bottom-full right-0 mb-4 w-48 space-y-2 font-mono bg-slate-950/90 backdrop-blur-xl px-5 py-4 rounded-2xl border border-white/5 shadow-2xl">
+                      <div className="flex justify-between">
+                        <span>K</span> <span className="text-white/80">क</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Shift+K</span>{" "}
+                        <span className="text-white/80">ख</span>
+                      </div>
+                      <div className="border-t border-white/5 my-2" />
+                      <div className="flex justify-between">
+                        <span>/</span> <span className="text-white/80">्</span>
+                      </div>
                     </div>
                   </details>
                 )}
               </div>
-              <div className="sticky bottom-0 z-40 bg-[#0b1220] pt-3 pb-4">
-                {" "}
+
+              {/* KEYBOARD WRAPPER */}
+              <div className="flex justify-center pb-8">
                 <Keyboard
                   expectedKey={graphemes[index]}
                   lastCorrect={derivedLastCorrect}
@@ -502,11 +491,9 @@ export default function TypingTest() {
               </div>
             </div>
           </div>
-
-          {/* <ErrorBar errors={errors} /> */}
         </div>
       </div>
-    </>
+    </main>
   );
 }
 
@@ -522,8 +509,8 @@ function Stat({
   color?: string;
 }) {
   return (
-    <div className="bg-slate-800/50 p-3 sm:p-4 rounded-xl border border-slate-700 flex flex-col items-center">
-      <span className="text-slate-400 text-xs uppercase tracking-widest">
+    <div className="bg-slate-800/50 p-4 sm:p-5 rounded-2xl border border-slate-700/50 flex flex-col items-center justify-center transition-all hover:bg-slate-800/80">
+      <span className="text-slate-500 text-[10px] uppercase tracking-[0.2em] mb-1 font-bold">
         {label}
       </span>
       <span className={`text-2xl sm:text-4xl font-black ${color} tabular-nums`}>
