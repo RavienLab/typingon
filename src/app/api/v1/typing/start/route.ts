@@ -6,17 +6,10 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
-  const forwarded = req.headers.get("x-forwarded-for");
-  let ip = "unknown";
-
-  // 🔥 THE FIX: We added to pick the string, not the array
-  if (forwarded) {
-    const ipArray = forwarded.split(",");
-    const firstIp = ipArray; // 👈 MUST HAVE HERE
-    if (typeof firstIp === "string") {
-      ip = firstIp.trim();
-    }
-  }
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    req.headers.get("x-real-ip") ||
+    "unknown";
 
   console.log("🚀 API HIT - IP is:", ip);
 
@@ -42,7 +35,10 @@ export async function POST(req: Request) {
 
     if (totalParagraphs === 0) {
       console.error(`❌ DB EMPTY for mode: ${searchMode}`);
-      return NextResponse.json({ error: "No paragraphs found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "No paragraphs found" },
+        { status: 404 },
+      );
     }
 
     // 2. Get random paragraph
@@ -75,6 +71,9 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     console.error("❌ SERVER CRASH:", err);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
+    );
   }
 }
