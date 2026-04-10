@@ -1,17 +1,14 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Activity, Lock, Zap, Flame, BarChart3 } from "lucide-react";
 import AvatarUploader from "@/components/profile/AvatarUploader";
 import { motion } from "framer-motion";
 import StreakHeatmap from "@/components/StreakHeatmap";
-import { useSession, signIn } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import ProLock from "@/components/ProLock";
-import { useQueryClient } from "@tanstack/react-query";
-
-/* ---------------- PAGE ---------------- */
 
 export default function ProfilePage() {
   const { data: session, status, update } = useSession();
@@ -24,7 +21,6 @@ export default function ProfilePage() {
     const saved =
       localStorage.getItem("typing_last_result") ||
       localStorage.getItem("typing_last_result_prev");
-
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -38,121 +34,70 @@ export default function ProfilePage() {
   const isGuest = status !== "authenticated";
   const queriesEnabled = !isGuest;
 
+  const { data: profileData, isLoading: loadingProfile } = useQuery({
+    queryKey: ["profile-full-data"],
+    queryFn: () => fetch("/api/v1/user/profile-data").then((r) => r.json()),
+    enabled: queriesEnabled,
+  });
+
+  const me = profileData?.me;
+  const stats = Array.isArray(profileData?.stats) ? profileData.stats : [];
+  const streak = profileData?.streak || 0;
+  const recent = Array.isArray(profileData?.recent) ? profileData.recent : [];
+  const xpData = profileData?.xpData;
+  const achievements = Array.isArray(profileData?.achievements)
+    ? profileData.achievements
+    : [];
+  const fingers = profileData?.fingers || {};
+
   async function handleUpgrade() {
     try {
       setUpgrading(true);
-
-      const res = await fetch("/api/v1/user/upgrade", {
-        method: "POST",
-      });
+      const res = await fetch("/api/v1/user/upgrade", { method: "POST" });
 
       if (!res.ok) throw new Error();
 
-      await Promise.all([
-        update(),
-        queryClient.invalidateQueries({ queryKey: ["me"] }),
-      ]);
+      const data = await res.json();
+
+      // 🔥 THIS REFRESHES THE JWT COOKIE WITHOUT LOGOUT
+      await update({
+        ...session,
+        user: {
+          ...session?.user,
+          isPro: data.isPro,
+        },
+      });
+
+      // Refresh the UI data
+      queryClient.invalidateQueries({ queryKey: ["profile-full-data"] });
 
       setUpgrading(false);
-    } catch {
+    } catch (err) {
       setUpgrading(false);
-      alert("Something went wrong");
+      alert("Upgrade failed. Please try again.");
     }
   }
 
-  const { data: me } = useQuery({
-    queryKey: ["me"],
-    queryFn: () => fetch("/api/v1/user/me").then((r) => r.json()),
-    enabled: queriesEnabled,
-  });
-
-  /* ===== Fetch User Stats ===== */
-  const { data: stats = [], isLoading: loadingStats } = useQuery({
-    queryKey: ["me-stats"],
-    queryFn: () => fetch("/api/v1/stats/me").then((r) => r.json()),
-    enabled: queriesEnabled,
-  });
-
-  const { data: streak = 0, isLoading: loadingStreak } = useQuery({
-    queryKey: ["streak"],
-    queryFn: () => fetch("/api/v1/streak").then((r) => r.json()),
-    enabled: queriesEnabled,
-  });
-
-  const { data: recent = [], isLoading: loadingRecent } = useQuery({
-    queryKey: ["recent"],
-    queryFn: async () => {
-      const res = await fetch("/api/v1/stats/recent", {
-        credentials: "include",
-      });
-
-      if (!res.ok) return [];
-
-      const data = await res.json();
-
-      // support both array and { results: [] }
-      if (Array.isArray(data)) return data;
-      return data.results ?? [];
-    },
-    enabled: queriesEnabled,
-  });
-
-  const { data: xpData } = useQuery({
-    queryKey: ["xp"],
-    queryFn: () => fetch("/api/v1/xp").then((r) => r.json()),
-    enabled: queriesEnabled,
-  });
-
-  const { data: achievements = [] } = useQuery({
-    queryKey: ["achievements"],
-    queryFn: async () => {
-      const res = await fetch("/api/v1/achievements/me", {
-        credentials: "include",
-      });
-
-      if (!res.ok) return [];
-
-      return res.json();
-    },
-    enabled: queriesEnabled,
-  });
-
-  const { data: fingers = {} as Record<string, number> } = useQuery({
-    queryKey: ["fingerStats"],
-    queryFn: () => fetch("/api/v1/finger-stats").then((r) => r.json()),
-    enabled: queriesEnabled,
-  });
-  if (status === "loading") return null;
+  if (status === "loading" || (queriesEnabled && loadingProfile)) {
+    return (
+      <div className="flex flex-col items-center justify-center py-40 gap-4 text-white">
+        <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <p className="opacity-40 text-xs font-bold uppercase tracking-widest animate-pulse">
+          Syncing profile...
+        </p>
+      </div>
+    );
+  }
 
   if (isGuest) {
     return (
-      <div className="max-w-xl mx-auto py-24 text-center space-y-6">
-        <div className="text-xl sm:text-2xl font-bold">Hey Newbie 👋</div>
-
-        <div className="text-white/60">Create Your Typing Profile</div>
-
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 text-center">
-          <div className="text-lg font-semibold mb-2">
-            🔥 Your last result: {lastWpm ?? "--"} WPM
-          </div>
-
-          <div className="text-sm text-white/60">Create your profile to:</div>
-
-          <div className="text-sm text-white/70 mt-2 space-y-1">
-            <div>• Track improvement</div>
-            <div>• Keep streaks</div>
-            <div>• Compete on leaderboard</div>
-          </div>
-        </div>
-
+      <div className="max-w-xl mx-auto py-24 text-center space-y-6 text-white">
+        <div className="text-xl font-bold">Hey Newbie 👋</div>
         <button
-          onClick={() => {
-            localStorage.setItem("auth_intent", "new");
-            router.push("/signin");
-          }}
-          className="px-8 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-semibold"
+          onClick={() => router.push("/signin")}
+          className="px-8 py-3 bg-blue-600 rounded-xl font-semibold"
         >
-          Sign In / Create Account
+          Sign In
         </button>
       </div>
     );
@@ -160,10 +105,8 @@ export default function ProfilePage() {
 
   if (!me) return null;
 
-  /* ===== Safe Calculations ===== */
-
-  const testsCount = Array.isArray(stats) ? stats.length : 0;
-
+  /* ===== CALCULATIONS ===== */
+  const testsCount = stats.length;
   const avgWpm =
     testsCount > 0
       ? Math.round(
@@ -171,7 +114,6 @@ export default function ProfilePage() {
             testsCount,
         )
       : 0;
-
   const bestWpm =
     testsCount > 0 ? Math.max(...stats.map((r: any) => r.wpm || 0)) : 0;
 
@@ -180,358 +122,167 @@ export default function ProfilePage() {
     LM: "Left Middle",
     LR: "Left Ring",
     LP: "Left Pinky",
-
     RI: "Right Index",
     RM: "Right Middle",
     RR: "Right Ring",
     RP: "Right Pinky",
-
     THUMB: "Thumb",
   };
+
   const fingerEntries = Object.entries(fingers) as [string, number][];
 
+  // 🔥 FIX 1: Explicit numeric sort
   const weakestFinger =
     fingerEntries.length > 0
-      ? fingerEntries.reduce(
-          (min, curr) => (curr[1] < min[1] ? curr : min),
-          fingerEntries[0],
-        )
+      ? [...fingerEntries].sort((a, b) => Number(a) - Number(b))
       : null;
 
-  const lastTest = recent?.[0]?.createdAt;
+  // 🔥 FIX 2: Store the ID in a simple string for the UI comparison
+  const weakestFingerId = weakestFinger ? weakestFinger : "";
 
-  const didUserPlayToday =
-    lastTest && new Date(lastTest).toDateString() === new Date().toDateString();
-
-  const isAtRisk = streak > 0 && !didUserPlayToday;
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-8 sm:space-y-10">
-      {/* ================= TOP CARD ================= */}
-
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-10 text-white">
+      {/* HEADER */}
       <div
-        className={`
-    bg-slate-900/70 border border-slate-800 rounded-2xl p-4 sm:p-6 md:p-8 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6
-    ${me?.isPro ? "shadow-[0_0_30px_rgba(255,180,0,0.3)]" : ""}
-  `}
+        className={`bg-slate-900/70 border border-slate-800 rounded-2xl p-8 flex flex-col sm:flex-row items-center gap-6 ${me?.isPro ? "shadow-[0_0_30px_rgba(255,180,0,0.1)]" : ""}`}
       >
-        {/* Avatar */}
         <AvatarUploader image={me?.image} name={me?.name} />
-        {/* Info */}
-        <div>
-          <div className="flex items-center gap-3">
-            <h2 className="text-xl sm:text-2xl font-bold">
-              {me?.name ?? session?.user?.name ?? "User"}
-              <span className="ml-2 text-sm text-blue-400">
-                Level {me?.level ?? 1}
-              </span>
-            </h2>
-            {me?.isPro && (
-              <motion.span
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="px-2 py-0.5 rounded text-xs font-bold bg-gradient-to-r from-amber-400 to-orange-500 text-black"
-              >
-                PRO
-              </motion.span>
-            )}
-          </div>
-
-          <p className="text-white/50 mt-1">Member since 2026</p>
-          <div className="mt-2">
-            <div className="text-xs text-white/50 mb-1">XP: {me?.xp ?? 0}</div>
-
-            <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-blue-500 transition-all"
-                style={{
-                  width: `${((me?.xp ?? 0) % 1000) / 10}%`,
-                }}
-              />
-            </div>
+        <div className="flex-1">
+          <h2 className="text-2xl font-bold">
+            {me?.name ?? "User"}{" "}
+            <span className="text-sm text-blue-400 ml-2">
+              Lvl {xpData?.level ?? 1}
+            </span>
+          </h2>
+          <div className="mt-4 h-1.5 w-48 bg-white/5 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-blue-500"
+              style={{ width: `${((xpData?.xp ?? 0) % 1000) / 10}%` }}
+            />
           </div>
         </div>
-        {/* Upgrade */}
-        <div className="w-full sm:w-auto sm:ml-auto">
-          <button
-            onClick={handleUpgrade}
-            disabled={!me || me?.isPro || upgrading}
-            className={`w-full sm:w-auto px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl font-bold flex items-center gap-2 transition-all duration-300 transform active:scale-95
-  ${
-    me?.isPro
-      ? "bg-green-500 text-black"
-      : upgrading
-        ? "bg-blue-500 text-white opacity-80"
-        : "bg-amber-500 hover:bg-amber-400 text-black"
-  }`}
-          >
-            <Zap size={18} />
-            {me?.isPro ? (
-              "PRO Active"
-            ) : upgrading ? (
-              <>
-                Unlocking...
-                <span className="animate-pulse">...</span>
-              </>
-            ) : (
-              "Unlock PRO (Free)"
-            )}{" "}
-          </button>
-          {!me?.isPro && (
-            <div className="text-xs text-white/50 mt-2 text-center">
-              Early access — limited time
-            </div>
-          )}
-        </div>
+        <button
+          onClick={handleUpgrade}
+          disabled={me?.isPro || upgrading}
+          className="px-6 py-3 bg-amber-400 text-black rounded-xl font-bold"
+        >
+          <Zap size={18} fill="currentColor" className="inline mr-2" />
+          {me?.isPro ? "PRO Active" : "Unlock PRO"}
+        </button>
       </div>
 
-      {/* ================= STREAK + WEEKLY ACTIVITY ================= */}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-        {/* Daily Streak Card */}
-        <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Flame className="text-orange-400" />
-
-            <div>
-              <div className="text-sm text-white/50">Daily Streak</div>
-
-              {loadingStreak ? (
-                <div className="text-xl">Loading…</div>
-              ) : (
-                <div className="text-3xl font-black">{streak} 🔥</div>
-              )}
-            </div>
-          </div>
-
-          {!loadingStreak && (
-            <div className="text-xs sm:text-sm text-white/50 text-right sm:text-left">
-              {streak > 0
-                ? "Keep your streak alive today."
-                : "Start your streak today."}
-            </div>
-          )}
-        </div>
-
-        {/* ⚠️ STREAK WARNING */}
-        {isAtRisk && (
-          <div className="md:col-span-2 bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl text-sm text-center">
-            ⚠ You're about to lose your streak 😈
-          </div>
-        )}
-
-        {/* Weekly Activity Card */}
-        <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6">
-          <div className="text-sm text-white/50 mb-3 text-center">
-            Weekly Activity
-          </div>
-
-          <div className="flex justify-center">
-            <StreakHeatmap />
-          </div>
-        </div>
-      </div>
-
-      {/* ================= PERFORMANCE ================= */}
-
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+      {/* CORE STATS */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
         <StatBox
           icon={<BarChart3 size={18} />}
           label="Tests"
           value={testsCount}
         />
-
-        <StatBox
-          icon={<Activity size={18} />}
-          label="Average WPM"
-          value={avgWpm}
-        />
-
+        <StatBox icon={<Activity size={18} />} label="Avg WPM" value={avgWpm} />
         <StatBox icon={<Zap size={18} />} label="Best WPM" value={bestWpm} />
-        <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-4 sm:p-6 text-center">
-          <div className="text-sm text-white/50">Level</div>
-
-          <div className="text-2xl sm:text-3xl md:text-4xl font-black text-blue-400">
-            {xpData?.level || 1}
-          </div>
-
-          <div className="mt-2 text-sm text-white/50">
-            XP: {xpData?.xp || 0}
-          </div>
-        </div>
+        <StatBox
+          icon={<Flame size={18} />}
+          label="Streak"
+          value={streak}
+          color="text-orange-400"
+        />
       </div>
 
-      {/* ================= FINGER ACCURACY ================= */}
-
+      {/* FINGER ACCURACY */}
       <ProLock isPro={!!me?.isPro}>
-        <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6">
-          <h3 className="text-lg font-bold mb-4">Accuracy by Finger</h3>
+        <div className="bg-slate-900/40 border border-white/5 rounded-2xl p-6">
+          <h3 className="text-sm font-black uppercase tracking-widest text-white/40 mb-6">
+            Finger Accuracy
+          </h3>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            {fingerEntries.map(([fingerId, acc]) => {
+              // 🔥 FIX 3: Pre-calculate the class to avoid template literal issues
+              const isThisWeakest = fingerId === weakestFingerId;
+              const borderClass = isThisWeakest
+                ? "border-red-500/30 bg-red-500/5"
+                : "border-white/5";
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-            {Object.keys(fingers).length === 0 ? (
-              <div className="text-white/50 text-sm col-span-full text-center">
-                Complete a few tests to see finger accuracy.
-              </div>
-            ) : (
-              Object.entries(fingers).map(([finger, acc]) => {
-                const isWeakest = weakestFinger?.[0] === finger;
-
-                return (
-                  <div
-                    key={finger}
-                    className={`
-                bg-white/5 rounded-xl p-4 text-center
-                ${isWeakest ? "border border-red-500/50" : ""}
-              `}
-                  >
-                    <div className="text-sm text-white/50">
-                      {FINGER_LABELS[finger] ?? finger}
-                    </div>
-
-                    <div className="text-2xl font-black">{Number(acc)}%</div>
+              return (
+                <div
+                  key={fingerId}
+                  className={`bg-white/5 rounded-xl p-4 text-center border ${borderClass}`}
+                >
+                  <div className="text-[10px] text-white/40 font-bold mb-1 uppercase">
+                    {FINGER_LABELS[fingerId] ?? fingerId}
                   </div>
-                );
-              })
-            )}
+                  <div className="text-xl font-black">{Number(acc)}%</div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </ProLock>
 
-      {/* ================= LOWER GRID ================= */}
+      {/* RECENT ACTIVITY */}
+      <div className="bg-slate-900/40 border border-white/5 rounded-2xl p-6">
+        <h3 className="text-sm font-black uppercase tracking-widest text-white/40 mb-6">
+          Recent Activity
+        </h3>
+        <div className="space-y-2">
+          {recent.slice(0, 5).map((r: any, i: number) => {
+            // 🔥 NEW: Dynamic Mode Label Logic
+            const getModeLabel = (type: string, mode: string) => {
+              if (type === "words" || mode === "english") return "ENGLISH";
+              if (type === "numbers" || mode === "numbers") return "NUMBERS";
+              if (type === "code" || mode === "code") return "CODE";
+              if (mode === "hindi") return "HINDI";
+              if (mode === "marathi") return "MARATHI";
+              return (mode || type || "TEST").toUpperCase();
+            };
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
-        {/* Recent Activity */}
-        <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6">
-          <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-            <Activity className="text-blue-400" />
-            Recent Activity
-          </h3>
+            const label = getModeLabel(r.textType, r.practiceMode);
 
-          {loadingRecent ? (
-            <p className="text-white/50">Loading…</p>
-          ) : !Array.isArray(recent) || recent.length === 0 ? (
-            <p className="text-white/50">No tests taken yet.</p>
-          ) : (
-            <div className="space-y-3">
-              {recent
-                .filter((r: any) => r.wpm > 0 && r.accuracy > 0)
-                .slice(0, 5)
-                .map((r: any, i: number) => {
-                  const acc = Math.round(r.accuracy);
+            return (
+              <div
+                key={i}
+                className="flex justify-between items-center bg-white/5 px-4 py-3 rounded-xl border border-white/5"
+              >
+                {/* 🔥 Changed from static "TEST" to dynamic label */}
+                <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">
+                  {label}
+                </span>
 
-                  const mode =
-                    r.textType === "words"
-                      ? "ENGLISH"
-                      : r.textType === "numbers"
-                        ? "NUMBERS"
-                        : r.textType === "code"
-                          ? "CODE"
-                          : r.textType === "marathi"
-                            ? "MARATHI"
-                            : r.textType === "hindi"
-                              ? "HINDI"
-                              : r.practiceMode?.toUpperCase() || "TEST";
+                <span className="font-bold text-sm text-slate-200">
+                  {Math.round(r.wpm)} WPM
+                </span>
 
-                  return (
-                    <div
-                      key={i}
-                      className="flex justify-between items-center bg-white/5 px-4 py-3 rounded-lg text-sm"
-                    >
-                      <span className="text-white/50 text-xs tracking-wide">
-                        {mode}
-                      </span>
-
-                      <span className="font-semibold">
-                        {Math.round(r.wpm)} WPM
-                      </span>
-
-                      <span
-                        className={
-                          acc >= 95
-                            ? "text-green-400"
-                            : acc >= 85
-                              ? "text-yellow-400"
-                              : "text-red-400"
-                        }
-                      >
-                        {acc}%
-                      </span>
-                    </div>
-                  );
-                })}
-            </div>
-          )}
-        </div>
-
-        {/* Achievements */}
-
-        <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6">
-          <h3 className="text-lg font-bold mb-4">Achievements</h3>
-
-          {achievements.length === 0 ? (
-            <p className="text-white/50">No achievements yet</p>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-              {achievements.map((a: any) => (
-                <div
-                  key={a.achievement.id}
-                  className="bg-white/5 p-4 rounded-xl text-center"
+                <span
+                  className={`text-xs font-bold ${r.accuracy >= 95 ? "text-emerald-400" : "text-amber-400"}`}
                 >
-                  <div className="text-2xl">{a.achievement.icon}</div>
-
-                  <div className="font-semibold mt-1">
-                    {a.achievement.title}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+                  {Math.round(r.accuracy)}%
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
   );
 }
-
-/* ================= COMPONENTS ================= */
 
 function StatBox({
   icon,
   label,
   value,
+  color = "text-white",
 }: {
   icon: React.ReactNode;
   label: string;
   value: number;
+  color?: string;
 }) {
   return (
-    <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-4 sm:p-6 text-center">
-      <div className="flex justify-center mb-2 text-blue-400">{icon}</div>
-      <div className="text-sm text-white/50 mb-1">{label}</div>
-      <div className="text-2xl sm:text-3xl md:text-4xl font-black">{value}</div>
+    <div className="bg-slate-900/40 border border-white/5 rounded-2xl p-6 text-center">
+      <div className="flex justify-center mb-3 text-blue-400/50">{icon}</div>
+      <div className="text-[10px] uppercase font-black text-white/30 tracking-widest mb-1">
+        {label}
+      </div>
+      <div className={`text-3xl font-black ${color}`}>{value}</div>
     </div>
-  );
-}
-
-function Achievement({ title, progress }: { title: string; progress: number }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="mb-4"
-    >
-      <div className="flex justify-between text-sm mb-1 text-white/70">
-        <span>{title}</span>
-        <span>{progress}%</span>
-      </div>
-
-      <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: `${progress}%` }}
-          transition={{ duration: 0.8 }}
-          className="h-full bg-blue-600"
-        />
-      </div>
-    </motion.div>
   );
 }

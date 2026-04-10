@@ -69,18 +69,23 @@ export default function ResultClient() {
   }, [setNavigating]);
 
   /* ---------- HANDLERS ---------- */
+  /* ---------- HANDLERS ---------- */
   const handleNext = () => {
+    // 1. Aggressively clear the Zustand store
     const store = useTypingStore.getState();
+    store.reset(); // Wipe all previous keystrokes/WPM
 
-    // 1. Trigger the ParagraphProvider to increment the index (new text)
+    // 2. Clear local data
+    setData(null);
+
+    // 3. 🔥 Trigger the ParagraphProvider to fetch the NEW paragraph
     nextParagraph();
 
-    // 2. Clear typing progress and "blank" the store text
-    // This triggers the useEffect in TestClient to sync the new text
-    store.reset();
-
-    // 3. Navigate back to test
-    router.replace("/test");
+    // 4. Move back to the test page
+    // We use setTimeout to let the state updates settle for a millisecond
+    setTimeout(() => {
+      router.replace("/test");
+    }, 10);
   };
 
   const handleRetry = () => {

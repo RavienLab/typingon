@@ -6,10 +6,19 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
-  const ip =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    req.headers.get("x-real-ip") ||
-    "unknown";
+  const forwarded = req.headers.get("x-forwarded-for");
+  let ip = "unknown";
+
+  // 🔥 THE FIX: We added to pick the string, not the array
+  if (forwarded) {
+    const ipArray = forwarded.split(",");
+    const firstIp = ipArray; // 👈 MUST HAVE HERE
+    if (typeof firstIp === "string") {
+      ip = firstIp.trim();
+    }
+  }
+
+  console.log("🚀 API HIT - IP is:", ip);
 
   const session = await getServerSession(authOptions);
 
@@ -20,54 +29,52 @@ export async function POST(req: Request) {
     body = {};
   }
 
-  const { mode = "test", duration = 60, textType = "paragraph" } = body;
+  // 🔥 FIX 2: Your frontend sends "practiceMode", not "mode"
+  const mode = body.practiceMode || body.mode || "english";
+  const searchMode = mode.toLowerCase();
+  const duration = body.duration || 60;
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  try {
+    // 1. Check database for paragraphs
+    const totalParagraphs = await prisma.paragraph.count({
+      where: { language: searchMode },
+    });
 
-  const used = session?.user?.id
-    ? await prisma.typingSession.count({
-        where: {
-          userId: session.user.id,
-          startedAt: { gt: today },
-        },
-      })
-    : 0;
+    if (totalParagraphs === 0) {
+      console.error(`❌ DB EMPTY for mode: ${searchMode}`);
+      return NextResponse.json({ error: "No paragraphs found" }, { status: 404 });
+    }
 
-  if (!session?.user?.isPro && used >= 50) {
-    return NextResponse.json({ error: "Daily limit reached" }, { status: 403 });
-  }
+    // 2. Get random paragraph
+    const randomIndex = Math.floor(Math.random() * totalParagraphs);
+    const selectedParagraph = await prisma.paragraph.findFirst({
+      where: { language: searchMode },
+      skip: randomIndex,
+    });
 
-  const filters: any[] = [];
+    if (!selectedParagraph) throw new Error("Fetch failed");
 
-  if (session?.user?.id) {
-    filters.push({ userId: session.user.id });
-  }
-
-  filters.push({ ipAddress: ip });
-
-  const recentSessions = await prisma.typingSession.count({
-    where: {
-      OR: filters,
-      startedAt: {
-        gt: new Date(Date.now() - 10000),
+    // 3. Create the session
+    const typingSession = await prisma.typingSession.create({
+      data: {
+        userId: session?.user?.id ?? null,
+        ipAddress: ip,
+        mode: searchMode,
+        duration: Number(duration),
+        textType: "paragraph",
       },
-    },
-  });
+    });
 
-  if (recentSessions > 10) {
-    return NextResponse.json({ error: "Too many sessions" }, { status: 429 });
+    return NextResponse.json({
+      sessionId: typingSession.id,
+      paragraph: {
+        id: selectedParagraph.id,
+        text: selectedParagraph.content,
+        difficulty: selectedParagraph.difficulty,
+      },
+    });
+  } catch (err) {
+    console.error("❌ SERVER CRASH:", err);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
-
-  const typingSession = await prisma.typingSession.create({
-    data: {
-      userId: session?.user?.id ?? null,
-      ipAddress: ip,
-      mode,
-      duration,
-      textType,
-    },
-  });
-
-  return NextResponse.json({ sessionId: typingSession.id });
 }

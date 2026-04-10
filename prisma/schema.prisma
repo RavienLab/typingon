@@ -9,15 +9,15 @@ datasource db {
 }
 
 model User {
-  id                String            @id @default(cuid())
-  email             String?           @unique
-  name              String?
-  password          String?
-  image             String?
-  role              UserRole          @default(user)
-  createdAt         DateTime          @default(now())
-  isPro             Boolean           @default(false)
-  
+  id        String   @id @default(cuid())
+  email     String?  @unique
+  name      String?
+  password  String?
+  image     String?
+  role      UserRole @default(user)
+  createdAt DateTime @default(now())
+  isPro     Boolean  @default(false)
+
   passwordUpdatedAt DateTime?
   xp                Int               @default(0)
   level             Int               @default(1)
@@ -64,13 +64,14 @@ model TypingResult {
   paragraph    String?
   keystrokes   Json?
   wpmTimeline  Json           @default("[]")
-  createdAt    DateTime       @default(now())
+  createdAt    DateTime       @default(now()) // 🔥 This needs an index!
   attemptId    String?        @unique
   session      TypingSession? @relation(fields: [sessionId], references: [id])
   user         User?          @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([wpm])
+  @@index([createdAt]) // 🔥 ADD THIS LINE
 }
 
 model Account {

@@ -122,11 +122,11 @@ export default function ResultScreen({
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, ease: "easeOut" }}
-      className="relative min-h-[calc(100vh-56px)] px-4 sm:px-6 py-10 sm:py-16"
+      className="relative min-h-[calc(100vh-56px)] px-4 sm:px-6 py-6 sm:py-10"
     >
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_50%_0%,rgba(59,130,246,0.15),transparent_60%)]" />
 
-      <div className="max-w-5xl mx-auto space-y-10 sm:space-y-8 sm:space-y-12 md:space-y-14">
+      <div className="max-w-5xl mx-auto space-y-6 sm:space-y-8">
         {/* TITLE */}
         <div className="text-center space-y-3">
           <h1 className="text-2xl sm:text-4xl md:text-5xl font-black text-white tracking-tight">
@@ -136,7 +136,7 @@ export default function ResultScreen({
         </div>
 
         {/* STATS */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 sm:gap-4 md:gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 sm:gap-4">
           <Stat
             label="WPM"
             value={stats.wpm}
@@ -223,7 +223,7 @@ export default function ResultScreen({
 
         {/* SPEED GRAPH */}
         {speedSeries.length > 0 && (
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 md:p-4 sm:p-6 md:p-8 space-y-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 space-y-4">
             <div className="text-xs uppercase tracking-widest text-white/40">
               Speed Curve
             </div>
@@ -267,10 +267,8 @@ export default function ResultScreen({
             </button>
 
             <button
-              onClick={() => {
-                onNext();
-              }}
-              className="w-full sm:w-auto px-6 sm:px-10 py-3 sm:py-4 bg-white/5 hover:bg-white/10 text-white font-black rounded-2xl border border-white/10 transition-all"
+              onClick={onNext} // 🔥 Ensure this is exactly 'onNext'
+              className="px-8 py-4 bg-white/10 hover:bg-white/20 rounded-xl font-bold transition-all"
             >
               Next Paragraph
             </button>
@@ -299,14 +297,18 @@ function Stat({
       initial={{ scale: 0.9, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       transition={{ duration: 0.3 }}
-      className="bg-slate-800/50 border border-slate-700 rounded-xl p-3 sm:p-4 md:p-5 text-center"
+      className={`bg-slate-800/50 border border-slate-700 rounded-xl p-3 sm:p-4 md:p-5 text-center flex flex-col justify-center ${
+        small ? "items-center" : ""
+      }`}
     >
       <div className="text-xs uppercase tracking-widest text-white/40 mb-2">
         {label}
       </div>
       <div
         className={`font-black ${
-          small ? "text-xl sm:text-2xl md:text-3xl" : "text-2xl sm:text-3xl md:text-4xl"
+          small
+            ? "text-xl sm:text-2xl md:text-3xl"
+            : "text-2xl sm:text-3xl md:text-4xl"
         } ${color}`}
       >
         {value}
