@@ -70,10 +70,11 @@ export default function TypingTest() {
     router.prefetch("/test/result");
   }, [router]);
 
+  // 🔥 UPDATED: Watch the whole paragraph object, not just the text
   useEffect(() => {
-    if (!paragraph?.text) return;
+    if (!paragraph) return; // Wait for the object to exist
 
-    // 🔥 FORCE RESET: Clear everything so the new paragraph can start
+    // 1. Force clear the store
     useTypingStore.setState({
       index: 0,
       errors: 0,
@@ -81,16 +82,18 @@ export default function TypingTest() {
       finished: false,
     });
 
-    // Reset local timer refs
+    // 2. Reset local refs
     timerStartRef.current = null;
     setDisplayElapsedMs(0);
     hasSubmittedRef.current = false;
+    setLiveStats({ wpm: 0, rawWpm: 0, accuracy: 100, elapsedMs: 0 });
 
-    // Load the new text into the engine
-    startTest(paragraph.text);
-
-    console.log("🚀 New Paragraph Loaded & Store Reset");
-  }, [paragraph?.text, startTest]);
+    // 3. Start test
+    if (paragraph.text) {
+      startTest(paragraph.text);
+      console.log("🚀 Test reset with Paragraph ID:", paragraph.id);
+    }
+  }, [paragraph, startTest]); // 👈 Changed from paragraph.text to paragraph
 
   const stateRef = useRef({ text, index, paused });
   useEffect(() => {

@@ -17,9 +17,11 @@ export async function POST(req: Request) {
     req.headers.get("x-real-ip") ||
     "unknown";
 
-  console.log("🚀 API HIT - IP is:", ip);
+  console.log(
+    "🚀 API HIT - IP is:",
+    ip,
+  ); /* ---------------- RATE LIMIT CHECK (ADDED) ---------------- */
 
-  /* ---------------- RATE LIMIT CHECK (ADDED) ---------------- */
   const now = Date.now();
   const record = ipRequests.get(ip);
 
@@ -58,7 +60,7 @@ export async function POST(req: Request) {
       where: {
         OR: [{ userId: session?.user?.id ?? undefined }, { ipAddress: ip }],
         startedAt: {
-          gt: new Date(Date.now() - 3000), // 3 sec cooldown
+          gt: new Date(Date.now() - 1000), // 3 sec cooldown
         },
       },
     });
@@ -68,9 +70,7 @@ export async function POST(req: Request) {
         { error: "You're creating sessions too fast" },
         { status: 429 },
       );
-    }
-
-    /* ---------------- ORIGINAL LOGIC (UNCHANGED) ---------------- */
+    } /* ---------------- ORIGINAL LOGIC (UNCHANGED) ---------------- */
 
     const totalParagraphs = await prisma.paragraph.count({
       where: { language: searchMode },
@@ -84,9 +84,43 @@ export async function POST(req: Request) {
       );
     }
 
-    const randomIndex = Math.floor(Math.random() * totalParagraphs);
+    /* ---------------- FETCH RANDOM PARAGRAPH (IMPROVED) ---------------- */
+
+    const { excludeId, lastIds = [] } = body;
+
+    // 1. Build filter
+    const whereClause: any = {
+      language: searchMode,
+      ...(lastIds?.length || excludeId
+        ? {
+            id: {
+              notIn: [...(lastIds || []), excludeId].filter(Boolean),
+            },
+          }
+        : {}),
+    };
+
+    // 2. Count available paragraphs
+    let count = await prisma.paragraph.count({
+      where: whereClause,
+    });
+
+    // 3. Fallback if exclusion removes everything
+    let finalWhere = whereClause;
+
+    if (count === 0) {
+      count = await prisma.paragraph.count({
+        where: { language: searchMode },
+      });
+
+      finalWhere = { language: searchMode };
+    }
+
+    // 4. Random selection
+    const randomIndex = Math.floor(Math.random() * count);
+
     const selectedParagraph = await prisma.paragraph.findFirst({
-      where: { language: searchMode },
+      where: finalWhere,
       skip: randomIndex,
     });
 

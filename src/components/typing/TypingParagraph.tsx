@@ -23,8 +23,16 @@ export default function TypingParagraph({ text, index, wrongIndexes }: Props) {
 
     for (let i = 0; i < text.length; i++) {
       const span = document.createElement("span");
-      span.textContent = text[i] === " " ? "\u00A0" : text[i];
-      span.className = "text-slate-500";
+
+      if (text[i] === " ") {
+        span.textContent = "\u00A0";
+        span.className = "text-slate-500";
+      } else {
+        span.textContent = text[i];
+        span.className = "text-slate-500 inline-block";
+      }
+
+      span.style.whiteSpace = "nowrap"; // 🔥 THIS IS THE KEY FIX
 
       spanRefs.current.push(span);
       frag.appendChild(span);
@@ -62,7 +70,8 @@ export default function TypingParagraph({ text, index, wrongIndexes }: Props) {
   return (
     <div
       ref={containerRef}
-      className="text-2xl md:text-3xl font-mono leading-relaxed whitespace-pre-wrap break-words"
+      className="text-2xl md:text-3xl font-mono leading-relaxed whitespace-pre-wrap"
+      style={{ wordBreak: "keep-all" }}
     />
   );
 }

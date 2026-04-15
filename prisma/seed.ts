@@ -28,58 +28,157 @@ async function main() {
     // ENGLISH
     {
       content:
-        "Talk is cheap. Show me the code. Software engineering is a discipline of masterfully organizing complexity.",
-      language: Language.english,
-      difficulty: Difficulty.medium,
-    },
-    {
-      content:
-        "Innovation distinguishes between a leader and a follower. Stay hungry, stay foolish.",
+        "The quick brown fox jumps over the lazy dog while the sun slowly sets behind the quiet hills.",
       language: Language.english,
       difficulty: Difficulty.easy,
     },
-    // CODE
+
     {
       content:
-        "export default function App() { return <div className='p-4'>Hello World</div>; }",
+        "Typing consistently every day builds muscle memory and improves both speed and accuracy over time.",
+      language: Language.english,
+      difficulty: Difficulty.medium,
+    },
+
+    {
+      content:
+        "A calm mind and steady rhythm will always outperform rushed typing filled with constant mistakes and corrections.",
+      language: Language.english,
+      difficulty: Difficulty.medium,
+    },
+
+    {
+      content:
+        "Developers spend hours solving problems, reading code, debugging errors, and building systems that people rely on daily.",
+      language: Language.english,
+      difficulty: Difficulty.hard,
+    },
+
+    {
+      content:
+        "Discipline beats motivation because motivation fades, but disciplined habits continue even when you do not feel like trying.",
+      language: Language.english,
+      difficulty: Difficulty.hard,
+    },
+    // CODE
+    {
+      content: "function calculateSum(a, b) { return a + b; }",
+      language: Language.code,
+      difficulty: Difficulty.easy,
+    },
+
+    {
+      content: "const user = { id: 1, name: 'Ravi', isActive: true };",
       language: Language.code,
       difficulty: Difficulty.medium,
     },
+
     {
       content:
-        "const fetchData = async () => { const res = await fetch('/api/v1/user'); return res.json(); };",
+        "async function fetchUsers() { const res = await fetch('/api/users'); return res.json(); }",
+      language: Language.code,
+      difficulty: Difficulty.medium,
+    },
+
+    {
+      content:
+        "useEffect(() => { const interval = setInterval(() => console.log('tick'), 1000); return () => clearInterval(interval); }, []);",
+      language: Language.code,
+      difficulty: Difficulty.hard,
+    },
+
+    {
+      content:
+        "try { const data = await prisma.user.findMany(); } catch (error) { console.error(error); }",
       language: Language.code,
       difficulty: Difficulty.hard,
     },
     // NUMBERS
     {
+      content: "12345 67890 24680 13579 11223 44556 77889",
+      language: Language.numbers,
+      difficulty: Difficulty.easy,
+    },
+
+    {
       content:
-        "Pi is 3.14159265 and the Speed of Light is 299,792,458 meters per second.",
+        "The value of pi is approximately 3.1415926535 and it never ends or repeats.",
       language: Language.numbers,
       difficulty: Difficulty.medium,
     },
-    // MARATHI
+
+    {
+      content: "98765 43210 10203 40506 70809 112358 132134",
+      language: Language.numbers,
+      difficulty: Difficulty.medium,
+    },
+
     {
       content:
-        "सातत्याने मेहनत केल्याने प्रगती होते. टायपिंगचा सराव आपल्याला अधिक कार्यक्षम बनवतो.",
+        "Binary values include 1010 1100 1111 0001 and hexadecimal values include A1 B2 C3 D4.",
+      language: Language.numbers,
+      difficulty: Difficulty.hard,
+    },
+    // MARATHI
+    {
+      content: "दररोज टायपिंगचा सराव केल्याने गती आणि अचूकता दोन्ही सुधारतात.",
+      language: Language.marathi,
+      difficulty: Difficulty.easy,
+    },
+
+    {
+      content:
+        "शांत मनाने आणि लक्ष केंद्रित करून काम केल्यास यश मिळणे सोपे होते.",
       language: Language.marathi,
       difficulty: Difficulty.medium,
+    },
+
+    {
+      content:
+        "वेळेचे योग्य नियोजन केल्याने प्रत्येक काम व्यवस्थित पूर्ण करता येते.",
+      language: Language.marathi,
+      difficulty: Difficulty.medium,
+    },
+
+    {
+      content: "सतत प्रयत्न करत राहिल्यास कठीण गोष्टी देखील सहज साध्य होतात.",
+      language: Language.marathi,
+      difficulty: Difficulty.hard,
     },
     // HINDI
     {
       content:
-        "सफलता का रहस्य केवल अभ्यास है। जितना अधिक आप प्रयास करेंगे, उतनी ही तेजी से आप सीखेंगे।",
+        "नियमित अभ्यास करने से आपकी टाइपिंग गति और सटीकता दोनों में सुधार होता है।",
+      language: Language.hindi,
+      difficulty: Difficulty.easy,
+    },
+
+    {
+      content: "धैर्य और ध्यान के साथ किया गया काम हमेशा बेहतर परिणाम देता है।",
       language: Language.hindi,
       difficulty: Difficulty.medium,
     },
+
+    {
+      content: "हर दिन थोड़ा अभ्यास करने से लंबे समय में बड़ी सफलता मिलती है।",
+      language: Language.hindi,
+      difficulty: Difficulty.medium,
+    },
+
+    {
+      content:
+        "समय का सही उपयोग करने वाला व्यक्ति जीवन में हमेशा आगे बढ़ता है।",
+      language: Language.hindi,
+      difficulty: Difficulty.hard,
+    },
   ];
+  console.log("🧹 Clearing old paragraphs...");
+  await prisma.paragraph.deleteMany();
 
   console.log("📝 Seeding paragraphs...");
   for (const p of paragraphData) {
-    await prisma.paragraph.upsert({
-      where: { contentHash: getHash(p.content) },
-      update: {},
-      create: {
+    await prisma.paragraph.create({
+      data: {
         content: p.content,
         language: p.language,
         difficulty: p.difficulty,

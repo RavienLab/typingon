@@ -46,7 +46,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   // 🌍 Language & Typing Logic
   // 🔥 nextParagraph added here
   const { practiceMode, setPracticeMode, nextParagraph } = useParagraph();
-  const isTyping = useTypingStore((s) => s.index > 0);
+  const isTyping = useTypingStore((s) => s.index > 0 && !s.finished);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const { data: streak } = useQuery({
@@ -151,15 +151,23 @@ export function Shell({ children }: { children: React.ReactNode }) {
               {/* 2. 🔥 THE REFRESH BUTTON (The "English" Button) */}
               <button
                 disabled={isTyping}
-                onClick={() => nextParagraph()}
+                onClick={() => {
+                  if (pathname !== "/test") {
+                    router.push("/test");
+                    // Small delay to allow the test page to mount before firing the fetch
+                    setTimeout(() => nextParagraph(), 150);
+                  } else {
+                    nextParagraph();
+                  }
+                }}
                 className={`
-                    px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap
-                    ${
-                      isTyping
-                        ? "text-blue-400/50 cursor-not-allowed"
-                        : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white active:scale-95"
-                    }
-                  `}
+    px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap
+    ${
+      isTyping
+        ? "text-blue-400/50 cursor-not-allowed"
+        : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white active:scale-95"
+    }
+  `}
               >
                 {activeMode.label}
               </button>
