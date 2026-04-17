@@ -58,8 +58,8 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0b1220] px-4">
-      <div className="bg-slate-900 p-6 sm:p-8 rounded-xl w-full max-w-sm space-y-4 text-center">
+    <div className="w-full flex items-center justify-center">
+      <div className="bg-slate-900/80 backdrop-blur-xl p-5 sm:p-6 md:p-8 rounded-xl w-full max-w-sm space-y-4 text-center border border-slate-800">
         <h1 className="text-lg sm:text-xl font-bold">Set New Password</h1>
 
         <input

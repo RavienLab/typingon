@@ -73,9 +73,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col bg-[#0b1220] text-white">
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0b1220]/80 backdrop-blur">
-        <div className="max-w-7xl mx-auto h-14 px-3 sm:px-6 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto min-h-[56px] px-3 sm:px-6 flex items-center justify-between flex-wrap gap-y-2">
           {/* LEFT — LOGO & DROPDOWN */}
-          <div className="flex items-center gap-4 sm:gap-6">
+          <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
             <Link
               href="/"
               className="flex items-center gap-2 select-none shrink-0"
@@ -103,7 +103,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                   disabled={isTyping}
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                   className={`
-                      flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all
+  flex items-center gap-1 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg transition-all text-xs sm:text-sm
                       ${isTyping ? "opacity-30 cursor-not-allowed" : "hover:bg-white/5 text-white/40 hover:text-white"}
                     `}
                 >
@@ -161,7 +161,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                   }
                 }}
                 className={`
-    px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap
+    px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm rounded-lg text-xs font-bold transition-all whitespace-nowrap
     ${
       isTyping
         ? "text-blue-400/50 cursor-not-allowed"
@@ -180,7 +180,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
 
           {/* RIGHT — USER */}
-          <div className="flex items-center gap-2 sm:gap-4 min-w-fit">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-fit flex-wrap justify-end">
             <InstallButton />
             {status === "authenticated" ? (
               <div className="flex items-center gap-3 text-sm text-white/70">
@@ -200,7 +200,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                       {session.user?.name?.charAt(0).toUpperCase() || "U"}
                     </div>
                   )}
-                  <span className="max-w-[60px] sm:max-w-[120px] truncate font-medium text-white/90">
+                  <span className="max-w-[80px] sm:max-w-[140px] truncate font-medium text-white/90 text-xs sm:text-sm">
                     {session.user?.name ?? session.user?.email?.split("@")}
                   </span>
                 </div>
@@ -232,14 +232,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </header>
 
       {/* MOBILE NAV TABS */}
-      <div className="lg:hidden border-b border-white/10 bg-[#0b1220]/80 backdrop-blur">
+      <div className="lg:hidden border-b border-white/10 bg-[#0b1220]/80 backdrop-blur px-2 py-1">
         <NavTabs />
       </div>
 
       <main className="flex-1 pb-10 sm:pb-12">{children}</main>
 
       {/* FOOTER */}
-      <footer className="fixed bottom-0 left-0 w-full z-50 text-xs text-white/40">
+      <footer className="text-xs text-white/40 mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex justify-end items-center gap-2">
           <span className="hidden sm:inline">
             © {new Date().getFullYear()} TypingON
@@ -273,7 +273,7 @@ function NavTabs() {
   ];
 
   return (
-    <div className="flex gap-1 bg-white/5 rounded-lg p-1 text-xs sm:text-sm overflow-x-auto">
+    <div className="flex gap-1 bg-white/5 rounded-lg p-1 text-[10px] sm:text-xs md:text-sm overflow-x-auto no-scrollbar">
       {tabs.map((tab) => {
         const active =
           tab.href === "/test"

@@ -66,6 +66,14 @@ export default function TypingTest() {
     if (!timerStartRef.current) timerStartRef.current = Date.now();
   };
 
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 300);
+  }, []);
+
   useEffect(() => {
     router.prefetch("/test/result");
   }, [router]);
@@ -227,7 +235,13 @@ export default function TypingTest() {
     setNavigating,
     saveResultMutation,
   ]);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      inputRef.current?.focus();
+    }, 1000);
 
+    return () => clearInterval(interval);
+  }, []);
   const wrongIndexes = useMemo(() => {
     const map = new Set<number>();
     keystrokes.forEach((k, i) => {
@@ -253,7 +267,33 @@ export default function TypingTest() {
   }
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-[#0b1220] overflow-hidden fixed inset-0">
+    <div className="flex flex-col min-h-screen bg-[#0b1220] overflow-x-hidden">
+      <input
+        ref={inputRef}
+        className="absolute opacity-0"
+        autoCapitalize="off"
+        autoCorrect="off"
+        spellCheck={false}
+        onChange={(e) => {
+          const value = e.target.value;
+
+          // 🔥 BACKSPACE FIX
+          if (value.length === 0) {
+            input("Backspace");
+            return;
+          }
+
+          const char =
+            value[value.length - 1] === "\n"
+              ? "Enter"
+              : value[value.length - 1];
+
+          startTimer();
+          input(char);
+
+          e.target.value = "";
+        }}
+      />
       {/* 1. HEADER */}
       <div className="border-b border-slate-800 shrink-0 h-[56px] flex items-center bg-[#0b1220] z-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 w-full">
@@ -277,9 +317,12 @@ export default function TypingTest() {
       </div>
 
       {/* 2. MAIN SECTION */}
-      <main className="flex-1 flex flex-col items-center justify-center w-full max-w-6xl mx-auto px-4 sm:px-6 overflow-hidden pt-12">
-        <div className="relative w-full shrink-0 h-[220px] sm:h-[280px] mb-8">
-          <div className="relative h-full bg-slate-900/40 rounded-[2rem] border border-slate-800/60 shadow-2xl overflow-hidden cursor-text">
+      <main className="flex-1 flex flex-col items-center justify-start w-full max-w-6xl mx-auto px-4 sm:px-6 pt-6 sm:pt-12">
+        <div className="relative w-full shrink-0 min-h-[180px] sm:min-h-[240px] md:min-h-[280px] mb-6 sm:mb-8">
+          <div
+            onClick={() => inputRef.current?.focus()}
+            className="relative h-full bg-slate-900/40 rounded-[2rem] border border-slate-800/60 shadow-2xl overflow-hidden cursor-text"
+          >
             {paused && (
               <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md">
                 <div className="text-white/90 text-sm font-bold tracking-[0.3em] uppercase bg-slate-800/80 px-8 py-4 rounded-full border border-white/10">
@@ -293,7 +336,7 @@ export default function TypingTest() {
               Live Session
             </div>
 
-            <div className="relative h-full w-full px-8 sm:px-16 overflow-hidden">
+            <div className="relative h-full w-full px-4 sm:px-8 md:px-16">
               <div
                 className="transition-all duration-500 ease-out"
                 style={{
@@ -302,7 +345,7 @@ export default function TypingTest() {
               >
                 <div className="pt-20 pb-20">
                   <div
-                    className="text-2xl sm:text-3xl md:text-4xl leading-[1.6] tracking-wide text-left text-slate-100 font-medium"
+                    className="text-lg sm:text-2xl md:text-3xl lg:text-4xl leading-relaxed tracking-wide text-left text-slate-100 font-medium"
                     style={{
                       wordBreak: "normal",
                       overflowWrap: "break-word",
@@ -325,7 +368,7 @@ export default function TypingTest() {
         </div>
 
         {/* 3. KEYBOARD */}
-        <div className="w-full shrink-0 h-[280px] flex items-center justify-center">
+        <div className="w-full shrink-0 flex items-center justify-center py-4 sm:py-6">
           <Keyboard
             expectedKey={graphemes[index]}
             lastCorrect={keystrokes[keystrokes.length - 1]?.correct}

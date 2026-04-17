@@ -36,13 +36,13 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0b1220] px-4">
+    <div className="w-full flex items-center justify-center">
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-slate-900/80 backdrop-blur-xl p-6 sm:p-8 rounded-2xl w-full max-w-sm space-y-5 text-center shadow-xl border border-slate-800"
+        className="bg-slate-900/80 backdrop-blur-xl p-5 sm:p-6 md:p-8 rounded-2xl w-full max-w-sm space-y-5 text-center shadow-xl border border-slate-800"
       >
-        <h1 className="text-lg sm:text-xl font-bold">Welcome Back</h1>
+        <h1 className="text-base sm:text-lg md:text-xl font-bold">Welcome Back</h1>
 
         <input
           className="w-full p-2.5 sm:p-3 bg-slate-800 rounded-lg text-sm sm:text-base"

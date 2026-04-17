@@ -141,14 +141,14 @@ export default function ProfilePage() {
   const weakestFingerId = weakestFinger ? weakestFinger : "";
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-10 text-white">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-8 sm:space-y-10 text-white">
       {/* HEADER */}
       <div
-        className={`bg-slate-900/70 border border-slate-800 rounded-2xl p-8 flex flex-col sm:flex-row items-center gap-6 ${me?.isPro ? "shadow-[0_0_30px_rgba(255,180,0,0.1)]" : ""}`}
+        className={`bg-slate-900/70 border border-slate-800 rounded-2xl p-5 sm:p-6 md:p-8 flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 ${me?.isPro ? "shadow-[0_0_30px_rgba(255,180,0,0.1)]" : ""}`}
       >
         <AvatarUploader image={me?.image} name={me?.name} />
         <div className="flex-1">
-          <h2 className="text-2xl font-bold">
+          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-center sm:text-left">
             {me?.name ?? "User"}{" "}
             <span className="text-sm text-blue-400 ml-2">
               Lvl {xpData?.level ?? 1}
@@ -164,7 +164,7 @@ export default function ProfilePage() {
         <button
           onClick={handleUpgrade}
           disabled={me?.isPro || upgrading}
-          className="px-6 py-3 bg-amber-400 text-black rounded-xl font-bold"
+          className="px-4 sm:px-6 py-2 sm:py-3 bg-amber-400 text-black rounded-xl font-bold text-sm sm:text-base w-full sm:w-auto"
         >
           <Zap size={18} fill="currentColor" className="inline mr-2" />
           {me?.isPro ? "PRO Active" : "Unlock PRO"}
@@ -172,7 +172,7 @@ export default function ProfilePage() {
       </div>
 
       {/* CORE STATS */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
         <StatBox
           icon={<BarChart3 size={18} />}
           label="Tests"
@@ -194,7 +194,7 @@ export default function ProfilePage() {
           <h3 className="text-sm font-black uppercase tracking-widest text-white/40 mb-6">
             Finger Accuracy
           </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
             {fingerEntries.map(([fingerId, acc]) => {
               // 🔥 FIX 3: Pre-calculate the class to avoid template literal issues
               const isThisWeakest = fingerId === weakestFingerId;
@@ -240,7 +240,7 @@ export default function ProfilePage() {
             return (
               <div
                 key={i}
-                className="flex justify-between items-center bg-white/5 px-4 py-3 rounded-xl border border-white/5"
+                className="flex flex-wrap sm:flex-nowrap justify-between items-center bg-white/5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl border border-white/5 gap-2"
               >
                 {/* 🔥 Changed from static "TEST" to dynamic label */}
                 <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">
@@ -277,12 +277,14 @@ function StatBox({
   color?: string;
 }) {
   return (
-    <div className="bg-slate-900/40 border border-white/5 rounded-2xl p-6 text-center">
+    <div className="bg-slate-900/40 border border-white/5 rounded-2xl p-4 sm:p-5 md:p-6 text-center">
       <div className="flex justify-center mb-3 text-blue-400/50">{icon}</div>
       <div className="text-[10px] uppercase font-black text-white/30 tracking-widest mb-1">
         {label}
       </div>
-      <div className={`text-3xl font-black ${color}`}>{value}</div>
+      <div className={`text-xl sm:text-2xl md:text-3xl font-black ${color}`}>
+        {value}
+      </div>
     </div>
   );
 }

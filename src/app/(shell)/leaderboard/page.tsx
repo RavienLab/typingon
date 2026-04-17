@@ -71,22 +71,24 @@ export default function LeaderboardPage() {
 
   return (
     <PageMotion>
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-6 sm:space-y-8">
         {/* TITLE */}
         <div>
-          <h1 className="text-3xl font-black">Leaderboard</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-black">
+            Leaderboard
+          </h1>
           <p className="text-white/50">
             Top typists ranked by speed & accuracy
           </p>
         </div>
 
         {/* TABS */}
-        <div className="flex gap-2 bg-white/5 p-1 rounded-xl w-fit">
+        <div className="flex gap-1 sm:gap-2 bg-white/5 p-1 rounded-xl overflow-x-auto w-full sm:w-fit no-scrollbar">
           {["global", "daily", "weekly", "monthly"].map((t) => (
             <button
               key={t}
               onClick={() => setType(t as any)}
-              className={`px-3 sm:px-5 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold transition
+              className={`px-2 sm:px-4 py-1 sm:py-2 text-[10px] sm:text-xs md:text-sm whitespace-nowrap rounded-lg text-xs sm:text-sm font-semibold transition
   ${type === t ? "bg-blue-600 text-white" : "text-white/60 hover:text-white"}
 `}
             >
@@ -108,9 +110,9 @@ export default function LeaderboardPage() {
             </div>
           )}
 
-          <div className="bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden">
+          <div className="bg-slate-900/70 border border-slate-800 rounded-2xl overflow-x-auto">
             {/* HEADER */}
-            <div className="grid grid-cols-12 px-3 sm:px-6 py-2 sm:py-4 text-xs sm:text-sm text-white/50 border-b border-slate-800">
+            <div className="grid grid-cols-12 min-w-[520px] px-3 sm:px-6 py-2 sm:py-4 text-[10px] sm:text-xs md:text-sm text-white/50 border-b border-slate-800">
               <div className="col-span-2 sm:col-span-1">#</div>
               <div className="col-span-10 sm:col-span-5">User</div>
               <div className="col-span-4 sm:col-span-2 text-right">Best</div>
@@ -130,13 +132,13 @@ export default function LeaderboardPage() {
                 return (
                   <div
                     key={row.user.id}
-                    className={`grid grid-cols-12 px-3 sm:px-6 py-2 sm:py-4 text-xs sm:text-sm border-b border-slate-800 last:border-none items-center transition
-              ${
-                isCurrentUser
-                  ? "bg-yellow-500/10 ring-1 ring-yellow-400/30"
-                  : "hover:bg-white/5"
-              }
-            `}
+                    className={`grid grid-cols-12 min-w-[520px] px-3 sm:px-6 py-2 sm:py-4 text-[10px] sm:text-xs md:text-sm border-b border-slate-800 last:border-none items-center transition
+  ${
+    isCurrentUser
+      ? "bg-yellow-500/10 ring-1 ring-yellow-400/30"
+      : "hover:bg-white/5"
+  }
+`}
                   >
                     {/* Rank */}
                     <div className="col-span-2 sm:col-span-1 font-bold">
@@ -147,11 +149,11 @@ export default function LeaderboardPage() {
                     </div>
 
                     {/* User */}
-                    <div className="col-span-10 sm:col-span-5 flex items-center gap-2 sm:gap-3">
+                    <div className="col-span-10 sm:col-span-5 flex items-center gap-2 sm:gap-3 min-w-0">
                       <Avatar src={row.user.image} />
 
                       <div>
-                        <span className="font-medium">
+                        <span className="font-medium truncate block max-w-[120px] sm:max-w-full">
                           {row.user.name || "Anonymous"}
                         </span>
 
@@ -227,7 +229,7 @@ function Avatar({ src }: { src: string | null }) {
       alt="avatar"
       width={36}
       height={36}
-      className="rounded-full"
+      className="rounded-full w-7 h-7 sm:w-9 sm:h-9 object-cover"
     />
   );
 }
