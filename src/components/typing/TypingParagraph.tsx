@@ -21,22 +21,35 @@ export default function TypingParagraph({ text, index, wrongIndexes }: Props) {
 
     const frag = document.createDocumentFragment();
 
-    for (let i = 0; i < text.length; i++) {
-      const span = document.createElement("span");
+    let globalIndex = 0;
 
-      if (text[i] === " ") {
-        span.textContent = "\u00A0";
-        span.className = "text-slate-500";
-      } else {
-        span.textContent = text[i];
-        span.className = "text-slate-500 inline-block";
+    const words = text.split(" ");
+
+    words.forEach((word, wordIndex) => {
+      const wordWrapper = document.createElement("span");
+      wordWrapper.style.display = "inline-block";
+      wordWrapper.style.whiteSpace = "nowrap"; // 🔥 keeps word together
+      wordWrapper.style.marginRight = "6px"; // spacing between words
+
+      for (let i = 0; i < word.length; i++) {
+        const charSpan = document.createElement("span");
+        charSpan.textContent = word[i];
+        charSpan.className = "text-slate-500";
+
+        spanRefs.current.push(charSpan);
+        wordWrapper.appendChild(charSpan);
+        globalIndex++;
       }
 
-      span.style.whiteSpace = "nowrap"; // 🔥 THIS IS THE KEY FIX
+      frag.appendChild(wordWrapper);
 
-      spanRefs.current.push(span);
-      frag.appendChild(span);
-    }
+      // add space (as real space, not span)
+      if (wordIndex !== words.length - 1) {
+        const space = document.createTextNode(" ");
+        frag.appendChild(space);
+        globalIndex++;
+      }
+    });
 
     containerRef.current.appendChild(frag);
   }, [text]);
@@ -71,7 +84,6 @@ export default function TypingParagraph({ text, index, wrongIndexes }: Props) {
     <div
       ref={containerRef}
       className="text-2xl md:text-3xl font-mono leading-relaxed whitespace-pre-wrap"
-      style={{ wordBreak: "keep-all" }}
     />
   );
 }
