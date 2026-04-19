@@ -12,7 +12,7 @@ export default function TypingParagraph({ text, index, wrongIndexes }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const spanRefs = useRef<HTMLSpanElement[]>([]);
 
-  /* ---------- build paragraph once ---------- */
+  // 1. Build Paragraph Structure
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -20,70 +20,82 @@ export default function TypingParagraph({ text, index, wrongIndexes }: Props) {
     spanRefs.current = [];
 
     const frag = document.createDocumentFragment();
-
-    let globalIndex = 0;
-
     const words = text.split(" ");
 
     words.forEach((word, wordIndex) => {
       const wordWrapper = document.createElement("span");
       wordWrapper.style.display = "inline-block";
-      wordWrapper.style.whiteSpace = "nowrap"; // 🔥 keeps word together
-      wordWrapper.style.marginRight = "6px"; // spacing between words
+      wordWrapper.style.whiteSpace = "nowrap";
+      wordWrapper.className = "word-wrapper"; // Optional: for debugging
 
       for (let i = 0; i < word.length; i++) {
         const charSpan = document.createElement("span");
         charSpan.textContent = word[i];
-        charSpan.className = "text-slate-500";
-
+        charSpan.className = "text-white/20 transition-colors duration-75 relative"; 
+        
         spanRefs.current.push(charSpan);
         wordWrapper.appendChild(charSpan);
-        globalIndex++;
       }
 
       frag.appendChild(wordWrapper);
 
-      // add space (as real space, not span)
+      // Add space as a tracked span
       if (wordIndex !== words.length - 1) {
-        const space = document.createTextNode(" ");
-        frag.appendChild(space);
-        globalIndex++;
+        const spaceSpan = document.createElement("span");
+        spaceSpan.textContent = " "; 
+        spaceSpan.className = "text-white/20 transition-colors duration-75 relative";
+        
+        spanRefs.current.push(spaceSpan);
+        frag.appendChild(spaceSpan);
       }
     });
 
     containerRef.current.appendChild(frag);
   }, [text]);
 
-  /* ---------- update styles on typing ---------- */
+  // 2. Update Styles Based on Current Index & Errors
   useEffect(() => {
     const spans = spanRefs.current;
+    if (!spans.length) return;
 
     for (let i = 0; i < spans.length; i++) {
       const span = spans[i];
-
-      span.classList.remove(
-        "text-white",
-        "text-red-400",
-        "text-slate-500",
-        "active-char",
-      );
+      
+      // Reset classes to base state
+      // We keep "relative" because your CSS .active-char::after needs a relative parent
+      span.className = "transition-colors duration-75 relative";
 
       if (i < index) {
-        if (wrongIndexes.has(i)) span.classList.add("text-red-400");
-        else span.classList.add("text-white");
+        // --- CHARACTERS ALREADY TYPED ---
+        if (wrongIndexes.has(i)) {
+          span.classList.add("text-red-500");
+          if (span.textContent === " ") {
+            span.classList.add("bg-red-500/30", "rounded-sm");
+          }
+        } else {
+          span.classList.add("text-slate-100");
+        }
+      } else if (i === index) {
+        // --- THE CURRENT ACTIVE CHARACTER ---
+        // Using your CSS global class "active-char" for the blinking underline
+        span.classList.add("text-blue-400", "active-char");
       } else {
-        span.classList.add("text-slate-500");
+        // --- FUTURE CHARACTERS ---
+        span.classList.add("text-white/20");
       }
     }
 
-    const active = spans[index];
-    if (active) active.classList.add("active-char");
+    // Auto-scroll logic
+    const activeSpan = spans[index];
+    if (activeSpan && containerRef.current) {
+      activeSpan.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
   }, [index, wrongIndexes]);
 
   return (
     <div
       ref={containerRef}
-      className="text-2xl md:text-3xl font-mono leading-relaxed whitespace-pre-wrap"
+      className="text-2xl md:text-4xl font-mono leading-[1.8] tracking-tight py-4 cursor-text"
     />
   );
 }

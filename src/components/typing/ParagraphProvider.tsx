@@ -75,7 +75,7 @@ export function ParagraphProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       }
     },
-    [lastIds],
+    [],
   );
 
   // Trigger fetch whenever mode changes

@@ -267,7 +267,7 @@ export default function TypingTest() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#0b1220] overflow-x-hidden">
+    <div className="flex flex-col h-[100dvh] bg-[#0b1220] overflow-hidden fixed inset-0">
       <input
         ref={inputRef}
         className="absolute opacity-0"
@@ -295,7 +295,7 @@ export default function TypingTest() {
         }}
       />
       {/* 1. HEADER */}
-      <div className="shrink-0 flex items-center pt-2 pb-2">
+      <div className="border-b border-slate-800 shrink-0 h-[56px] flex items-center bg-[#0b1220] z-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 w-full">
           <div className="flex gap-2 overflow-x-auto no-scrollbar text-xs uppercase tracking-wider text-white/50">
             {MODES.map(({ label, value, icon: Icon }) => (
@@ -362,8 +362,8 @@ export default function TypingTest() {
               </div>
             </div>
 
-            <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-[#0b1220] via-[#0b1220]/40 to-transparent z-20 pointer-events-none" />
-            <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#0b1220] via-[#0b1220]/40 to-transparent z-20 pointer-events-none" />
+            <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-[#0b1220] via-[#0b1220]/40 to-transparent z-20 " />
+            <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#0b1220] via-[#0b1220]/40 to-transparent z-20 " />
           </div>
         </div>
 

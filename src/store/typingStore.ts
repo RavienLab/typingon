@@ -14,12 +14,12 @@ export type TypingResult = {
     durationMs: number;
   };
   practiceMode: PracticeMode;
-  paragraph: string;
+  paragraph: string; // Keep as string
   keystrokes: Keystroke[];
 };
 
 type TypingState = {
-  text: string;
+  text: string; // Changed from string[] to string
   index: number;
   keystrokes: Keystroke[];
   errors: number;
@@ -28,25 +28,21 @@ type TypingState = {
   finished: boolean;
   wpmTimeline: WpmPoint[];
 
-  // 🆕 ATTEMPT (EXAM INTEGRITY)
   attemptId: string | null;
   setAttemptId: (id: string) => void;
   clearAttemptId: () => void;
 
-  // UX
   focused: boolean;
   strictMode: boolean;
   flashInvalid: boolean;
 
-  // keyboard feedback
   lastKey: string | null;
   lastCorrect: boolean | null;
 
-  // RESULT
   lastResult: TypingResult | null;
   isNavigating: boolean;
 
-  startTest: (text: string) => void;
+  startTest: (text: string | string[]) => void;
   restartTest: () => void;
   input: (key: string) => void;
   setFocused: (v: boolean) => void;
@@ -72,15 +68,10 @@ const IGNORED_KEYS = new Set([
   "ArrowRight",
 ]);
 
-const normalizeKey = (k: string) => {
-  if (k === "Enter") return "\n";
-  return k;
-};
-
 /* ---------------- STORE ---------------- */
 
 export const useTypingStore = create<TypingState>((set, get) => ({
-  text: "",
+  text: "", // Initialize as empty string
   index: 0,
   keystrokes: [],
   errors: 0,
@@ -89,7 +80,6 @@ export const useTypingStore = create<TypingState>((set, get) => ({
   finished: false,
   wpmTimeline: [],
 
-  // 🆕 Attempt
   attemptId: null,
   setAttemptId: (id) => set({ attemptId: id }),
   clearAttemptId: () => set({ attemptId: null }),
@@ -106,9 +96,10 @@ export const useTypingStore = create<TypingState>((set, get) => ({
   setNavigating: (v) => set({ isNavigating: v }),
 
   /* ---------- START TEST ---------- */
-  startTest: (text) =>
+  startTest: (textInput) =>
     set({
-      text,
+      // Ensure text is stored as a string regardless of input type
+      text: Array.isArray(textInput) ? textInput.join("") : textInput,
       index: 0,
       keystrokes: [],
       errors: 0,
@@ -120,7 +111,7 @@ export const useTypingStore = create<TypingState>((set, get) => ({
       focused: true,
       lastKey: null,
       lastCorrect: null,
-      attemptId: null, // 🔥 new test = new attempt
+      attemptId: null,
     }),
 
   restartTest: () => {
@@ -131,11 +122,9 @@ export const useTypingStore = create<TypingState>((set, get) => ({
   },
 
   setFocused: (v) => set({ focused: v }),
-
   setLastResult: (r) => set({ lastResult: r }),
 
   /* ---------- INPUT ---------- */
-
   input: (key) => {
     const {
       text,
@@ -165,7 +154,6 @@ export const useTypingStore = create<TypingState>((set, get) => ({
     /* ----- BACKSPACE ----- */
     if (key === "Backspace") {
       if (keystrokes.length === 0) return;
-
       set({
         keystrokes: keystrokes.slice(0, -1),
         index: Math.max(0, index - 1),
@@ -173,30 +161,14 @@ export const useTypingStore = create<TypingState>((set, get) => ({
         lastKey: "Backspace",
         lastCorrect: true,
       });
-
       return;
     }
 
     if (index >= text.length) return;
 
-    let currentIndex = index;
-
-    // skip newlines safely
-    while (text[currentIndex] === "\n") {
-      currentIndex++;
-    }
-
-    // update index if needed
-    if (currentIndex !== index) {
-      set({ index: currentIndex });
-    }
-
-    const expected = text[currentIndex];
-
-    const normalizedKey = normalizeKey(key);
-    const normalizedExpected = normalizeKey(expected);
-
-    const correct = normalizedKey === normalizedExpected;
+    const expected = text[index]; // Works on strings too!
+    const typed = key === "Enter" ? "\n" : key;
+    const correct = typed === expected;
     const now = Date.now();
 
     /* ----- STRICT MODE ----- */
@@ -207,13 +179,11 @@ export const useTypingStore = create<TypingState>((set, get) => ({
         lastKey: key,
         lastCorrect: false,
       });
-
       setTimeout(() => set({ flashInvalid: false }), 120);
       return;
     }
 
     /* ----- RELAXED MODE ----- */
-
     const newKeystrokes: Keystroke[] = [
       ...keystrokes,
       { key, time: now, correct },
@@ -225,7 +195,7 @@ export const useTypingStore = create<TypingState>((set, get) => ({
     const wpm = minutes > 0 ? correctCount / 5 / minutes : 0;
 
     const nextIndex = index + 1;
-    const done = nextIndex >= text.length;
+    const done = nextIndex >= text.length; // Works on strings too!
 
     set({
       index: nextIndex,
@@ -239,7 +209,6 @@ export const useTypingStore = create<TypingState>((set, get) => ({
   },
 
   /* ---------- RESET ---------- */
-
   reset: () =>
     set({
       text: "",
@@ -255,6 +224,6 @@ export const useTypingStore = create<TypingState>((set, get) => ({
       lastKey: null,
       lastCorrect: null,
       lastResult: null,
-      attemptId: null, // 🔥 clear attempt
+      attemptId: null,
     }),
 }));
