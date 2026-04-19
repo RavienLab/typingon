@@ -72,6 +72,11 @@ const IGNORED_KEYS = new Set([
   "ArrowRight",
 ]);
 
+const normalizeKey = (k: string) => {
+  if (k === "Enter") return "\n";
+  return k;
+};
+
 /* ---------------- STORE ---------------- */
 
 export const useTypingStore = create<TypingState>((set, get) => ({
@@ -174,14 +179,24 @@ export const useTypingStore = create<TypingState>((set, get) => ({
 
     if (index >= text.length) return;
 
-    // auto skip newline
-    if (text[index] === "\n") {
-      set({ index: index + 1 });
-      return;
+    let currentIndex = index;
+
+    // skip newlines safely
+    while (text[currentIndex] === "\n") {
+      currentIndex++;
     }
 
-    const expected = text[index];
-    const correct = key === expected;
+    // update index if needed
+    if (currentIndex !== index) {
+      set({ index: currentIndex });
+    }
+
+    const expected = text[currentIndex];
+
+    const normalizedKey = normalizeKey(key);
+    const normalizedExpected = normalizeKey(expected);
+
+    const correct = normalizedKey === normalizedExpected;
     const now = Date.now();
 
     /* ----- STRICT MODE ----- */

@@ -295,7 +295,7 @@ export default function TypingTest() {
         }}
       />
       {/* 1. HEADER */}
-      <div className="border-b border-slate-800 shrink-0 h-[56px] flex items-center bg-[#0b1220] z-50">
+      <div className="shrink-0 flex items-center pt-2 pb-2">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 w-full">
           <div className="flex gap-2 overflow-x-auto no-scrollbar text-xs uppercase tracking-wider text-white/50">
             {MODES.map(({ label, value, icon: Icon }) => (
